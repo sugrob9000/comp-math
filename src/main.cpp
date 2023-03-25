@@ -1,8 +1,7 @@
 #include "gauss_gui.hpp"
 #include "gui.hpp"
+#include "imcpp20.hpp"
 #include <chrono>
-#include <imgui/imgui.h>
-#include <imgui/imgui_cpp.h>
 #include <thread>
 
 int main ()
@@ -54,12 +53,12 @@ int main ()
 		{ // Draw GUI frame
 			gui::begin_frame();
 
-  		constexpr auto window_flags
-  			= ImGuiWindowFlags_NoCollapse
-  			| ImGuiWindowFlags_NoResize
-  			| ImGuiWindowFlags_NoMove
-  			| ImGuiWindowFlags_NoSavedSettings
-  			| ImGuiWindowFlags_NoBringToFrontOnFocus;
+			constexpr auto window_flags
+				= ImGuiWindowFlags_NoCollapse
+				| ImGuiWindowFlags_NoResize
+				| ImGuiWindowFlags_NoMove
+				| ImGuiWindowFlags_NoSavedSettings
+				| ImGuiWindowFlags_NoBringToFrontOnFocus;
 
 			const auto& viewport = ImGui::GetMainViewport();
 			const float x = viewport->WorkPos.x;

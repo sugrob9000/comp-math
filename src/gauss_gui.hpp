@@ -4,21 +4,21 @@
 #include "math.hpp"
 
 class Gauss {
-	using Element = double;
-	constexpr static int max_rows = 20;
-	constexpr static int max_cols = 20;
+	using Number = double;
+	constexpr static unsigned max_rows = 20;
+	constexpr static unsigned max_cols = 20;
 
-	using Static_matrix = math::Static_matrix<Element, max_rows, max_cols>;
-	using Matrix_view = math::Matrix_view<Element>;
-	constexpr static int max_variables = max_cols-1;
+	constexpr static unsigned max_variables = max_cols-1;
 
 	struct Sized_static_matrix {
-		Static_matrix matrix{};
-		int rows = 4, cols = 4;
+		math::Static_matrix<Number, max_rows, max_cols> matrix{};
+		unsigned rows = 4, cols = 4;
 
 		auto view () { return matrix.subview(0, 0, rows, cols); }
-		int num_equations () const { return rows; }
-		int num_variables () const { return cols-1; }
+		auto view () const { return matrix.subview(0, 0, rows, cols); }
+
+		unsigned num_equations () const { return rows; }
+		unsigned num_variables () const { return cols-1; }
 	};
 
 	struct Input: Sized_static_matrix {
@@ -36,18 +36,19 @@ class Gauss {
 		Output (const Input& in);
 		void widget ();
 
-		auto solution_span () { return std::span{ solution, size_t(num_variables()) }; }
-		auto mismatch_span () { return std::span{ mismatch, size_t(num_equations()) }; }
-
-		// < 0 means no solutions at all
-		//   0 means all variables are determined
-		// > 0 means at least N variables are independent
 		int num_indeterminate_variables;
 
-		// Only calculated if appropriate
-		Element determinant;
-		Element solution[max_variables];
-		Element mismatch[max_rows];
+		// Only calculated when the variable coefficient matrix is square
+		Number determinant;
+
+		// Only calculated when the solution is unique
+		Number solution[max_variables]; // in correct order (permutation applied)
+		size_t permute[max_variables];   // for displaying columns in the pre-permutation order
+		Number mismatch[max_rows];
+
+		auto solution_span () { return std::span{ solution, size_t(num_variables()) }; }
+		auto permute_span () { return std::span{ permute, size_t(num_variables()) }; }
+		auto mismatch_span () { return std::span{ mismatch, size_t(num_equations()) }; }
 	};
 
 	Input input;

@@ -1,8 +1,7 @@
 #include "gauss_gui.hpp"
+#include "imcpp20.hpp"
 #include "util/util.hpp"
 #include <fstream>
-#include <imgui/imgui.h>
-#include <imgui/imgui_cpp.h>
 
 using namespace ImGui;
 using namespace ImScoped;
@@ -18,19 +17,21 @@ void Gauss::Input::widget ()
 {
 	if (auto bar = TabBar("tabs")) {
 		if (auto item = TabItem("Загрузить из файла")) {
-			InputText("Имя файла", filename_buffer, std::size(filename_buffer));
-
-			if (Button("Загрузить"))
+			bool do_load = InputText("Имя файла",
+					filename_buffer, std::size(filename_buffer),
+					ImGuiInputTextFlags_EnterReturnsTrue);
+			do_load |= Button("Загрузить");
+			if (do_load)
 				last_file_status = load_from_file(filename_buffer);
 
 			switch (last_file_status) {
 			case File_load_status::ok:
 				break;
 			case File_load_status::unreadable:
-				TextFmtColored(bad_red, FMT_STRING("Не удалось прочитать файл '{}'"), filename_buffer);
+				TextColored(bad_red, "Не удалось прочитать файл");
 				break;
 			case File_load_status::bad_dimensions:
-				TextColored(bad_red, "Неправильные размерности в матрице в файле");
+				TextColored(bad_red, "Некорректные размерности матрицы в файле");
 				break;
 			case File_load_status::bad_data:
 				TextColored(bad_red, "В файле не численные данные");
@@ -39,25 +40,24 @@ void Gauss::Input::widget ()
 		}
 
 		if (auto item = TabItem("Ввести матрицу")) {
-			SliderInt("строк",    &rows, 1, max_rows, nullptr, ImGuiSliderFlags_AlwaysClamp);
-			SliderInt("столбцов", &cols, 2, max_cols, nullptr, ImGuiSliderFlags_AlwaysClamp);
+			Slider("строк",    &rows, 1u, max_rows, nullptr, ImGuiSliderFlags_AlwaysClamp);
+			Slider("столбцов", &cols, 2u, max_cols, nullptr, ImGuiSliderFlags_AlwaysClamp);
 
 			if (auto table = Table("input", cols)) {
 				TableNextRow();
 				BeginDisabled();
-				for (int col = 0; col < num_variables(); col++) {
+				for (unsigned col = 0; col < num_variables(); col++) {
 					TableNextColumn();
 					TextFmt("X{}", col+1);
 				}
 				EndDisabled();
 
 				auto mat = view();
-				for (int row = 0; row < rows; row++) {
+				for (unsigned row = 0; row < rows; row++) {
 					TableNextRow();
-					for (int col = 0; col < cols; col++) {
+					for (unsigned col = 0; col < cols; col++) {
 						TableNextColumn();
-						const char id[] = { '#', '#', char('a'+row), char('a'+col), 0 };
-						InputScalar(id, DataTypeEnum<Element>, &mat[row][col]);
+						InputNumber(GenerateId(row, col), &mat[row][col]);
 					}
 				}
 			}
@@ -67,12 +67,12 @@ void Gauss::Input::widget ()
 	SeparatorText("Уравнения");
 	if (auto table = Table("equations", cols, matrix_table_flags)) {
 		auto mat = view();
-		for (int row = 0; row < rows; row++) {
+		for (unsigned row = 0; row < rows; row++) {
 			TableNextRow();
 			bool first_term = true;
-			for (int col = 0; col+1 < cols; col++) {
+			for (unsigned col = 0; col+1 < cols; col++) {
 				TableNextColumn();
-				Element value = mat[row][col];
+				Number value = mat[row][col];
 				if (value == 0)
 					continue;
 				char sign = (value > 0) ? '+' : '-';
@@ -100,14 +100,14 @@ auto Gauss::Input::load_from_file (const char* filename) -> File_load_status
 	if (temp.rows < 1 || temp.rows > max_rows || temp.cols < 2 || temp.cols > max_cols)
 	 	return File_load_status::bad_dimensions;
 
-	for (int row = 0; row < temp.rows; row++) {
-		for (int col = 0; col < temp.cols; col++) {
+	for (unsigned row = 0; row < temp.rows; row++) {
+		for (unsigned col = 0; col < temp.cols; col++) {
 			if (!(file >> temp.view()[row][col]))
 				return File_load_status::bad_data;
 		}
 	}
 
-	static_cast<Sized_static_matrix&>(*this) = temp;
+	this->Sized_static_matrix::operator=(temp);
 	return File_load_status::ok;
 }
 
@@ -121,50 +121,60 @@ void Gauss::output_widget ()
 		output->widget();
 }
 
-Gauss::Output::Output (const Input& in) : Sized_static_matrix(in)
+Gauss::Output::Output (const Input& in)
 {
-	math::gauss_triangulate(view());
-	num_indeterminate_variables = math::gauss_gather(solution_span(), view());
+	rows = in.rows;
+	cols = in.cols;
 
-	if (num_equations() == num_variables()) {
-		auto v = matrix.subview(0, 0, num_equations(), num_variables());
-		determinant = math::triangular_determinant(v);
-	}
+	// gauss_gather() gives the solution in a meaningless "raw" pre-permutation order
+	auto raw_solution = std::make_unique<Number[]>(num_variables());
+	std::span raw_solution_span { raw_solution.get(), size_t(num_variables()) };
+
+	math::gauss_triangulate(view(), in.view(), permute_span());
+	num_indeterminate_variables = math::gauss_gather(raw_solution_span, view());
+
+	auto variables_view = view().subview(0, 0, num_equations(), num_variables());
+
+	if (num_equations() == num_variables())
+		determinant = math::triangular_determinant(variables_view);
 
 	if (num_indeterminate_variables == 0) {
-		mul_matrix_vector(mismatch_span(),
-				matrix.subview(0, 0, num_equations(), num_variables()),
-				solution_span());
-		for (int i = 0; i < num_equations(); i++)
+		mul_matrix_vector(mismatch_span(), variables_view, raw_solution_span);
+		for (unsigned i = 0; i < num_equations(); i++)
 			mismatch[i] -= view()[i][cols-1];
+		for (unsigned i = 0; i < num_variables(); i++)
+			solution[permute[i]] = raw_solution[i];
 	}
 }
 
 void Gauss::Output::widget ()
 {
 	SeparatorText("Треугольный вид матрицы:");
-	if (auto table = Table("output", cols,
-			matrix_table_flags, ImVec2(0, 2 * rows * ImGui::GetFontSize()))) {
+	const float table_height = 2 * rows * ImGui::GetFontSize();
+	if (auto table = Table("output", cols, matrix_table_flags, ImVec2(0, table_height))) {
 		auto mat = view();
 
 		TableNextRow();
 		BeginDisabled();
-		for (int col = 0; col < num_variables(); col++) {
+		for (unsigned col = 0; col < num_variables(); col++) {
 			TableNextColumn();
-			TextFmt("X{}", col+1);
+			TextFmt("X{}", permute[col]+1);
 		}
 		EndDisabled();
 
-		for (int row = 0; row < rows; row++) {
+		for (unsigned row = 0; row < rows; row++) {
 			TableNextRow();
-			for (int col = 0; col < cols; col++) {
+			const unsigned diag = std::min(cols, row);
+
+			for (unsigned col = 0; col < diag; col++) {
 				TableNextColumn();
-				if (col < row) {
-					if (mat[row][col] != 0)
-						TextFmtColored(bad_red, FMT_STRING("{}"), mat[row][col]);
-				} else {
-					TextFmt(FMT_STRING("{}"), mat[row][col]);
-				}
+				if (mat[row][col] != 0)
+					TextFmtColored(bad_red, FMT_STRING("{}"), mat[row][col]);
+			}
+
+			for (unsigned col = diag; col < cols; col++) {
+				TableNextColumn();
+				TextFmt(FMT_STRING("{}"), mat[row][col]);
 			}
 		}
 	}

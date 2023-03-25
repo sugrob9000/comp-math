@@ -51,6 +51,7 @@ struct Context {
 		fonts->AddFontFromFileTTF("DejaVuSansMono.ttf", font_size, nullptr,
 				fonts->GetGlyphRangesCyrillic());
 
+		// we don't use a steady framerate anyway
 		im_io->ConfigInputTextCursorBlink = false;
 
 		ImGui::StyleColorsLight();

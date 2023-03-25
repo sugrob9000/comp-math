@@ -29,7 +29,7 @@ target_link_libraries(${exec}
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 	set(cxx-warnings -Wall -Wextra -Wpedantic -Wshadow -Wattributes -Wstrict-aliasing)
-	target_compile_options(${exec} PRIVATE ${cxx-warnings} -fmax-errors=1)
+	target_compile_options(${exec} PRIVATE ${cxx-warnings} -fmax-errors=1 -fconcepts-diagnostics-depth=10)
 
 	if(CMAKE_BUILD_TYPE STREQUAL Debug)
 		target_compile_options(${exec} PRIVATE -fsanitize=undefined -Og)
