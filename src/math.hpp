@@ -180,22 +180,22 @@ template <typename T> void gauss_triangulate
 				std::swap(permute_variables[nonzero], permute_variables[var]);
 		}
 
-		size_t var_id = permute_variables[var];
-		T main_element = tmp_row[var_id];
+		size_t main_var_id = permute_variables[var];
+		T main_element = tmp_row[main_var_id];
 		assert(main_element != 0);
 
 		for (size_t nequ = equ+1; nequ < num_equations; nequ++) {
 			auto nrow = tmp[nequ];
-			T& left_element = nrow[var_id];
+			T& left_element = nrow[main_var_id];
 
-			//const auto mutate = [&] (size_t var_idx) { }; // TODO
+			const auto apply = [&] (size_t var_id) {
+				nrow[var_id] -= (left_element * tmp_row[var_id]) / main_element;
+			};
 
-			for (size_t nvar = var+1; nvar < num_variables; nvar++) {
-				size_t nvar_id = permute_variables[nvar];
-				nrow[nvar_id] -= (left_element * tmp_row[nvar_id]) / main_element;
-			}
-			// Last column doesn't participate in permutation: handle specially
-			nrow[num_variables] -= (left_element * tmp_row[num_variables]) / main_element;
+			for (size_t nvar = var+1; nvar < num_variables; nvar++)
+				apply(permute_variables[nvar]);
+			apply(num_variables);
+
 			left_element = 0;
 		}
 

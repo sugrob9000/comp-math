@@ -18,6 +18,8 @@ int main ()
 	constexpr auto target_frame_time = std::chrono::microseconds{ 1000'000 / 60 };
 	clock::time_point next_frame_time;
 
+	bool show_demo = false;
+
 	bool should_quit = false;
 	SDL_Event event;
 	do {
@@ -44,6 +46,9 @@ int main ()
 					if (sym.scancode == SDL_SCANCODE_D && (sym.mod & KMOD_SHIFT))
 						asm("int3":::);
 
+					if (sym.scancode == SDL_SCANCODE_SLASH && (sym.mod & KMOD_SHIFT))
+						show_demo = true;
+
 					if (sym.scancode == SDL_SCANCODE_Q && (sym.mod & KMOD_SHIFT))
 						should_quit = true;
 				}
@@ -52,6 +57,9 @@ int main ()
 
 		{ // Draw GUI frame
 			gui::begin_frame();
+
+			if (show_demo)
+				ImGui::ShowDemoWindow(&show_demo);
 
 			constexpr auto window_flags
 				= ImGuiWindowFlags_NoCollapse

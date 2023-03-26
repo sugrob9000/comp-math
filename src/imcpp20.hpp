@@ -160,7 +160,8 @@ bool InputNumberN (const char* l, T* p, int n, T step = 0, T step_fast = 0, cons
 template <size_t Length> class GenerateId {
 	char s[2+Length+1]; // "##[...]\0"
 public:
-	template <std::integral... Ts> constexpr GenerateId (Ts... ts) {
+	template <std::integral... Ts> constexpr explicit GenerateId (Ts... ts) {
+		static_assert(Length == sizeof...(Ts));
 		s[0] = s[1] = '#';
 		int i = 2;
 		((s[i++] = 1 + ts % std::numeric_limits<char>::max()), ...);

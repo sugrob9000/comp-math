@@ -6,10 +6,19 @@
 using namespace ImGui;
 using namespace ImScoped;
 
-constexpr static ImColor bad_red(0.9f, 0.2f, 0.2f, 1.0f);
-constexpr static ImGuiTableFlags matrix_table_flags
-	= ImGuiTableFlags_SizingFixedFit
-	| ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY;
+constexpr static ImColor error_text_color(0.9f, 0.2f, 0.2f, 1.0f);
+
+/*
+ * Create a table which uses some fraction of the remaining window height
+ * e.g., factor = 0.5: use up half the remaining window height
+ *       factor = 1.0: use up the entire remaining height
+ */
+static auto matrix_table (const char* label, unsigned columns, float factor)
+{
+	return Table(label, columns,
+			ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY,
+			ImVec2(0, (1.0f - factor) * GetContentRegionAvail().y));
+}
 
 // ======================================= Input =======================================
 
@@ -28,13 +37,13 @@ void Gauss::Input::widget ()
 			case File_load_status::ok:
 				break;
 			case File_load_status::unreadable:
-				TextColored(bad_red, "Не удалось прочитать файл");
+				TextColored(error_text_color, "Не удалось прочитать файл");
 				break;
 			case File_load_status::bad_dimensions:
-				TextColored(bad_red, "Некорректные размерности матрицы в файле");
+				TextColored(error_text_color, "Некорректные размерности матрицы в файле");
 				break;
 			case File_load_status::bad_data:
-				TextColored(bad_red, "В файле не численные данные");
+				TextColored(error_text_color, "В файле не численные данные");
 				break;
 			}
 		}
@@ -43,13 +52,15 @@ void Gauss::Input::widget ()
 			Slider("строк",    &rows, 1u, max_rows, nullptr, ImGuiSliderFlags_AlwaysClamp);
 			Slider("столбцов", &cols, 2u, max_cols, nullptr, ImGuiSliderFlags_AlwaysClamp);
 
-			if (auto table = Table("input", cols)) {
-				TableNextRow();
-				BeginDisabled();
+			if (auto table = matrix_table("input", cols, 0.5)) {
+				constexpr float col_width = 100;
 				for (unsigned col = 0; col < num_variables(); col++) {
-					TableNextColumn();
-					TextFmt("X{}", col+1);
+					TableSetupColumn(fmt::format(FMT_STRING("X{}"), col+1).c_str(),
+							ImGuiTableColumnFlags_WidthFixed, col_width);
 				}
+				TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, col_width);
+				BeginDisabled();
+				TableHeadersRow();
 				EndDisabled();
 
 				auto mat = view();
@@ -65,7 +76,7 @@ void Gauss::Input::widget ()
 	}
 
 	SeparatorText("Уравнения");
-	if (auto table = Table("equations", cols, matrix_table_flags)) {
+	if (auto table = matrix_table("equations", cols, 1.0)) {
 		auto mat = view();
 		for (unsigned row = 0; row < rows; row++) {
 			TableNextRow();
@@ -121,11 +132,8 @@ void Gauss::output_widget ()
 		output->widget();
 }
 
-Gauss::Output::Output (const Input& in)
+Gauss::Output::Output (const Input& in): Sized_static_matrix(in.rows, in.cols)
 {
-	rows = in.rows;
-	cols = in.cols;
-
 	// gauss_gather() gives the solution in a meaningless "raw" pre-permutation order
 	auto raw_solution = std::make_unique<Number[]>(num_variables());
 	std::span raw_solution_span { raw_solution.get(), size_t(num_variables()) };
@@ -147,11 +155,12 @@ Gauss::Output::Output (const Input& in)
 	}
 }
 
-void Gauss::Output::widget ()
+void Gauss::Output::widget () const
 {
+	bool triangulation_error = false;
+
 	SeparatorText("Треугольный вид матрицы:");
-	const float table_height = 2 * rows * ImGui::GetFontSize();
-	if (auto table = Table("output", cols, matrix_table_flags, ImVec2(0, table_height))) {
+	if (auto table = matrix_table("output", cols, 0.5)) {
 		auto mat = view();
 
 		TableNextRow();
@@ -168,8 +177,10 @@ void Gauss::Output::widget ()
 
 			for (unsigned col = 0; col < diag; col++) {
 				TableNextColumn();
-				if (mat[row][col] != 0)
-					TextFmtColored(bad_red, FMT_STRING("{}"), mat[row][col]);
+				if (mat[row][col] != 0) {
+					TextFmtColored(error_text_color, FMT_STRING("{}"), mat[row][col]);
+					triangulation_error = true;
+				}
 			}
 
 			for (unsigned col = diag; col < cols; col++) {
@@ -179,12 +190,15 @@ void Gauss::Output::widget ()
 		}
 	}
 
+	if (triangulation_error)
+		TextColored(error_text_color, "Ошибка при триангуляции. Матрица не треугольная.");
+
 	Separator();
 
 	if (num_equations() == num_variables())
 		TextFmt(FMT_STRING("Определитель подматрицы коэффициентов: {}"), determinant);
 	else
-		TextWrapped("Подматрица коэффициентов не квадратная. Определитель не имеет смысла");
+		TextWrapped("Подматрица коэффициентов не квадратная. Определитель не имеет смысла.");
 
 	if (num_indeterminate_variables < 0) {
 		TextUnformatted("Система несовместна.");

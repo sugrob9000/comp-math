@@ -12,7 +12,10 @@ class Gauss {
 
 	struct Sized_static_matrix {
 		math::Static_matrix<Number, max_rows, max_cols> matrix{};
-		unsigned rows = 4, cols = 4;
+		unsigned rows, cols;
+
+		Sized_static_matrix () = default;
+		Sized_static_matrix (unsigned r, unsigned c): rows{r}, cols{c} {}
 
 		auto view () { return matrix.subview(0, 0, rows, cols); }
 		auto view () const { return matrix.subview(0, 0, rows, cols); }
@@ -22,6 +25,7 @@ class Gauss {
 	};
 
 	struct Input: Sized_static_matrix {
+		Input (): Sized_static_matrix(4, 4) {}
 		void widget ();
 
 		enum class File_load_status { ok, unreadable, bad_dimensions, bad_data };
@@ -33,8 +37,8 @@ class Gauss {
 	};
 
 	struct Output: Sized_static_matrix {
-		Output (const Input& in);
-		void widget ();
+		explicit Output (const Input& in);
+		void widget () const;
 
 		int num_indeterminate_variables;
 
@@ -43,12 +47,14 @@ class Gauss {
 
 		// Only calculated when the solution is unique
 		Number solution[max_variables]; // in correct order (permutation applied)
-		size_t permute[max_variables];   // for displaying columns in the pre-permutation order
+		size_t permute[max_variables];  // for displaying columns in the pre-permutation order
 		Number mismatch[max_rows];
 
-		auto solution_span () { return std::span{ solution, size_t(num_variables()) }; }
+		auto solution_span () const { return std::span{ solution, size_t(num_variables()) }; }
 		auto permute_span () { return std::span{ permute, size_t(num_variables()) }; }
-		auto mismatch_span () { return std::span{ mismatch, size_t(num_equations()) }; }
+
+		auto mismatch_span () const { return std::span{ mismatch, size_t(num_equations()) }; }
+		auto mismatch_span ()       { return std::span{ mismatch, size_t(num_equations()) }; }
 	};
 
 	Input input;
