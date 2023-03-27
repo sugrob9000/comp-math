@@ -7,7 +7,9 @@
 int main ()
 {
 	gui::init(1280, 760);
-	Gauss gauss;
+
+	gauss::Input input;
+	std::optional<gauss::Output> output;
 
 	using clock = std::chrono::steady_clock;
 
@@ -77,12 +79,21 @@ int main ()
 			ImGui::SetNextWindowPos({ x, y });
 			ImGui::SetNextWindowSize({ width / 2, height });
 			if (auto w = ImScoped::Window("Ввод", nullptr, window_flags))
-				gauss.input_widget();
+				input.widget();
 
 			ImGui::SetNextWindowPos({ x + width / 2, y });
 			ImGui::SetNextWindowSize({ width / 2, height });
-			if (auto w = ImScoped::Window("Вывод", nullptr, window_flags))
-				gauss.output_widget();
+			if (auto w = ImScoped::Window("Вывод", nullptr, window_flags)) {
+				if (ImGui::Button("Вычислить"))
+					output.emplace(input);
+				if (output) {
+					ImGui::SameLine();
+					if (ImGui::Button("Сбросить"))
+						output.reset();
+					else
+						output->widget();
+				}
+			}
 
 			gui::end_frame();
 		}

@@ -3,6 +3,8 @@
 #include "util/util.hpp"
 #include <fstream>
 
+namespace gauss {
+
 using namespace ImGui;
 using namespace ImScoped;
 
@@ -22,18 +24,17 @@ static auto matrix_table (const char* label, unsigned columns, float factor)
 
 // ======================================= Input =======================================
 
-void Gauss::Input::widget ()
+void Input::widget ()
 {
 	if (auto bar = TabBar("tabs")) {
 		if (auto item = TabItem("Загрузить из файла")) {
-			bool do_load = InputText("Имя файла",
-					filename_buffer, std::size(filename_buffer),
+			bool do_load_file = InputText("Имя файла", path_buf, std::size(path_buf),
 					ImGuiInputTextFlags_EnterReturnsTrue);
-			do_load |= Button("Загрузить");
-			if (do_load)
-				last_file_status = load_from_file(filename_buffer);
+			do_load_file |= Button("Загрузить");
+			if (do_load_file)
+				last_file_load_status = load_from_file(path_buf);
 
-			switch (last_file_status) {
+			switch (last_file_load_status) {
 			case File_load_status::ok:
 				break;
 			case File_load_status::unreadable:
@@ -99,7 +100,7 @@ void Gauss::Input::widget ()
 	}
 }
 
-auto Gauss::Input::load_from_file (const char* filename) -> File_load_status
+auto Input::load_from_file (const char* filename) -> File_load_status
 {
 	std::ifstream file(filename);
 	if (!file)
@@ -124,15 +125,7 @@ auto Gauss::Input::load_from_file (const char* filename) -> File_load_status
 
 // ======================================= Output =======================================
 
-void Gauss::output_widget ()
-{
-	if (Button("Вычислить"))
-		output.emplace(input);
-	if (output)
-		output->widget();
-}
-
-Gauss::Output::Output (const Input& in): Sized_static_matrix(in.rows, in.cols)
+Output::Output (const Input& in): Sized_static_matrix(in.rows, in.cols)
 {
 	// gauss_gather() gives the solution in a meaningless "raw" pre-permutation order
 	auto raw_solution = std::make_unique<Number[]>(num_variables());
@@ -155,7 +148,7 @@ Gauss::Output::Output (const Input& in): Sized_static_matrix(in.rows, in.cols)
 	}
 }
 
-void Gauss::Output::widget () const
+void Output::widget () const
 {
 	bool triangulation_error = false;
 
@@ -211,3 +204,5 @@ void Gauss::Output::widget () const
 		TextFmtWrapped(FMT_STRING("Невязка: {:.7}"), fmt::join(mismatch_span(), ", "));
 	}
 }
+
+} // namespace gauss
