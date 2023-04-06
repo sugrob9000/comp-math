@@ -2,10 +2,12 @@
 #include "util/util.hpp"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
+#include <fstream>
 #include <glm/glm.hpp>
-#include <optional>
-#include <imgui/imgui_impl_sdl2.h>
 #include <imgui/imgui_impl_opengl3.h>
+#include <imgui/imgui_impl_sdl2.h>
+#include <memory>
+#include <optional>
 
 using Resolution = glm::vec<2, int>;
 
@@ -35,6 +37,8 @@ struct Context {
 				SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 		if (!window)
 			FATAL("Failed to create SDL window: {}", SDL_GetError());
+
+		set_icon("icon");
 
 		SDL_GL_SetSwapInterval(0);
 
@@ -92,6 +96,31 @@ struct Context {
 		}
 
 		return false;
+	}
+
+	void set_icon (const char* filename) {
+		std::ifstream f(filename, std::ios::binary);
+		if (!f) {
+			WARNING("Cannot open icon '{}'", filename);
+			return;
+		}
+
+		constexpr int bytes_per_pixel = 3;
+		constexpr int side = 128;
+		constexpr int bytes = side * side * bytes_per_pixel;
+		auto pixels = std::make_unique<char[]>(bytes);
+		if (!f.read(pixels.get(), bytes)) {
+			WARNING("Cannot read {} bytes from '{}'", bytes, filename);
+			return;
+		}
+		f.close();
+
+		auto surf = SDL_CreateRGBSurfaceFrom(pixels.get(),
+				side, side, 8*bytes_per_pixel, side*bytes_per_pixel,
+				0x00FF'0000, 0x0000'FF00, 0x0000'00FF, 0);
+		SDL_SetColorKey(surf, SDL_TRUE, 0x00FF'00FF);
+		SDL_SetWindowIcon(window, surf);
+		SDL_FreeSurface(surf);
 	}
 };
 } // anon namespace

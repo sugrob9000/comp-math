@@ -2,12 +2,11 @@ cmake_minimum_required(VERSION 3.17)
 project(task1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(src-dir src)
 set(libsrc-dir libsrc)
 set(exec solver)
-
-file(GLOB_RECURSE src-files CONFIGURE_DEPENDS ${src-dir}/*.cpp)
 
 find_package(glm REQUIRED)
 find_package(SDL2 REQUIRED)
@@ -16,10 +15,12 @@ find_package(OpenGL REQUIRED)
 
 add_subdirectory(${libsrc-dir})
 
-file(GLOB_RECURSE src-files CONFIGURE_DEPENDS ${src-dir}/*.cpp)
+file(GLOB_RECURSE src-files CONFIGURE_DEPENDS ${src-dir}/*.cpp ${src-dir}/*.hpp)
 add_executable(${exec} ${src-files})
 
-target_include_directories(${exec} PRIVATE ${src-dir} ${libsrc-dir})
+target_include_directories(${exec} PRIVATE ${src-dir})
+# SYSTEM to ignore warnings in library headers
+target_include_directories(${exec} SYSTEM PRIVATE ${libsrc-dir})
 
 target_link_libraries(${exec}
 	fmt imgui

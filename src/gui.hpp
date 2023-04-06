@@ -1,5 +1,4 @@
-#ifndef GUI_HPP
-#define GUI_HPP
+#pragma once
 
 #include <SDL2/SDL.h>
 #include <imgui/imgui.h>
@@ -18,5 +17,3 @@ Event_process_result process_event (const SDL_Event& event);
 void begin_frame ();
 void end_frame ();
 } // namespace gui
-
-#endif // GUI_HPP

@@ -1,7 +1,8 @@
-#include "gauss_gui.hpp"
+#include "gauss/gui.hpp"
 #include "gui.hpp"
 #include "imcpp20.hpp"
 #include <chrono>
+#include <optional>
 #include <thread>
 
 int main ()
@@ -44,13 +45,10 @@ int main ()
 				if (gui::process_event(event) == gui::Event_process_result::passthrough
 				&& event.type == SDL_KEYDOWN) {
 					const auto& sym = event.key.keysym;
-
 					if (sym.scancode == SDL_SCANCODE_D && (sym.mod & KMOD_SHIFT))
 						asm("int3":::);
-
 					if (sym.scancode == SDL_SCANCODE_SLASH && (sym.mod & KMOD_SHIFT))
 						show_demo = true;
-
 					if (sym.scancode == SDL_SCANCODE_Q && (sym.mod & KMOD_SHIFT))
 						should_quit = true;
 				}

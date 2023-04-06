@@ -1,4 +1,5 @@
-#include "gauss_gui.hpp"
+#include "gauss/gui.hpp"
+#include "gauss/solve.hpp"
 #include "imcpp20.hpp"
 #include "util/util.hpp"
 #include <fstream>

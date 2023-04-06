@@ -1,11 +1,11 @@
-#ifndef IMCPP20_H
-#define IMCPP20_H
+#pragma once
 
 #include <imgui/imgui.h>
 #include <fmt/core.h>
 #include <utility>
 #include <concepts>
 #include <limits>
+#include <cstdint>
 
 namespace ImScoped {
 // ================= Scoped wrappers for ImGui's Begin*/End* functions =================
@@ -172,4 +172,3 @@ public:
 template <std::integral... Ts> GenerateId(Ts...) -> GenerateId<sizeof...(Ts)>;
 
 } // namespace ImGui
-#endif // IMCPP20_H

@@ -1,7 +1,6 @@
-#ifndef GAUSS_GUI_HPP
-#define GAUSS_GUI_HPP
+#pragma once
 
-#include "math.hpp"
+#include "gauss/matrix.hpp"
 
 namespace gauss {
 using Number = double;
@@ -60,5 +59,3 @@ public:
 	void widget () const;
 };
 }
-
-#endif // GAUSS_GUI_HPP
