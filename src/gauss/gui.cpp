@@ -132,13 +132,16 @@ Output::Output (const Input& in): Sized_static_matrix(in.rows, in.cols)
 	auto raw_solution = std::make_unique<Number[]>(num_variables());
 	std::span raw_solution_span { raw_solution.get(), size_t(num_variables()) };
 
-	math::gauss_triangulate(view(), in.view(), permute_span());
+	permutations = math::gauss_triangulate(view(), in.view(), permute_span());
 	num_indeterminate_variables = math::gauss_gather(raw_solution_span, view());
 
 	auto variables_view = view().subview(0, 0, num_equations(), num_variables());
 
-	if (num_equations() == num_variables())
+	if (num_equations() == num_variables()) {
 		determinant = math::triangular_determinant(variables_view);
+		if (permutations % 2 == 1)
+			determinant = -determinant;
+	}
 
 	if (num_indeterminate_variables == 0) {
 		mul_matrix_vector(mismatch_span(), variables_view, raw_solution_span);

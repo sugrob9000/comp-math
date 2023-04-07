@@ -48,6 +48,7 @@ class Output: public Sized_static_matrix {
 	Number solution[max_variables]; // in correct order (permutation applied)
 	size_t permute[max_variables];  // for displaying columns in the pre-permutation order
 	Number mismatch[max_rows];
+	unsigned permutations = 0;
 
 	auto solution_span () const { return std::span{ solution, size_t(num_variables()) }; }
 	auto permute_span () { return std::span{ permute, size_t(num_variables()) }; }

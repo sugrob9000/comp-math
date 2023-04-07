@@ -4,15 +4,18 @@
 
 namespace math {
 
-// First step of the Gauss method: Attempt to triangulate a matrix.
+// First step of the Gauss method: attempt to triangulate a matrix.
 // `dest` and `src` must not overlap.
 // The variables may be permuted if there are zeros on the main diagonal.
 // The order of permutation will be written to `permute_variables`
-template <typename T> void gauss_triangulate
+// Returns: the number of swaps made between variables
+template <typename T> unsigned gauss_triangulate
 (Matrix_view<T> dest, Matrix_view<const T> src, std::span<size_t> permute_variables)
 {
 	assert(src.cols() > 1 && src.rows() > 0);
 	assert(src.rows() == dest.rows() && src.cols() == dest.cols());
+
+	unsigned permutations = 0;
 
 	const size_t num_equations = src.rows();
 	const size_t num_variables = src.cols()-1;
@@ -36,8 +39,10 @@ template <typename T> void gauss_triangulate
 				nonzero++;
 			if (nonzero == num_variables)
 				continue;
-			if (nonzero != var)
+			if (nonzero != var) {
 				std::swap(permute_variables[nonzero], permute_variables[var]);
+				permutations++;
+			}
 		}
 
 		size_t main_var_id = permute_variables[var];
@@ -69,6 +74,8 @@ template <typename T> void gauss_triangulate
 			dest_row[var] = tmp_row[permute_variables[var]];
 		dest_row[num_variables] = tmp_row[num_variables];
 	}
+
+	return permutations;
 }
 
 
