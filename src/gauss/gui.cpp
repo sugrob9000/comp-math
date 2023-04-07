@@ -4,8 +4,6 @@
 #include "util/util.hpp"
 #include <fstream>
 
-namespace gauss {
-
 using namespace ImGui;
 using namespace ImScoped;
 
@@ -25,7 +23,7 @@ static auto matrix_table (const char* label, unsigned columns, float factor)
 
 // ======================================= Input =======================================
 
-void Input::widget ()
+void Gauss::Input::widget ()
 {
 	if (auto bar = TabBar("tabs")) {
 		if (auto item = TabItem("Загрузить из файла")) {
@@ -101,7 +99,7 @@ void Input::widget ()
 	}
 }
 
-auto Input::load_from_file (const char* filename) -> File_load_status
+auto Gauss::Input::load_from_file (const char* filename) -> File_load_status
 {
 	std::ifstream file(filename);
 	if (!file)
@@ -126,7 +124,7 @@ auto Input::load_from_file (const char* filename) -> File_load_status
 
 // ======================================= Output =======================================
 
-Output::Output (const Input& in): Sized_static_matrix(in.rows, in.cols)
+Gauss::Output::Output (const Input& in): Sized_static_matrix(in.rows, in.cols)
 {
 	// gauss_gather() gives the solution in a meaningless "raw" pre-permutation order
 	auto raw_solution = std::make_unique<Number[]>(num_variables());
@@ -152,7 +150,7 @@ Output::Output (const Input& in): Sized_static_matrix(in.rows, in.cols)
 	}
 }
 
-void Output::widget () const
+void Gauss::Output::widget () const
 {
 	bool triangulation_error = false;
 
@@ -209,4 +207,30 @@ void Output::widget () const
 	}
 }
 
-} // namespace gauss
+void Gauss::gui_frame ()
+{
+	const auto& viewport = ImGui::GetMainViewport();
+	const float x = viewport->WorkPos.x;
+	const float y = viewport->WorkPos.y;
+	const float width = viewport->WorkSize.x;
+	const float height = viewport->WorkSize.y;
+
+	ImGui::SetNextWindowPos({ x, y });
+	ImGui::SetNextWindowSize({ width / 2, height });
+	if (auto w = ImScoped::Window("Ввод (вариант 31)", nullptr, static_window_flags))
+		input.widget();
+
+	ImGui::SetNextWindowPos({ x + width / 2, y });
+	ImGui::SetNextWindowSize({ width / 2, height });
+	if (auto w = ImScoped::Window("Вывод", nullptr, static_window_flags)) {
+		if (ImGui::Button("Вычислить"))
+			output.emplace(input);
+		if (output) {
+			ImGui::SameLine();
+			if (ImGui::Button("Сбросить"))
+				output.reset();
+			else
+				output->widget();
+		}
+	}
+}

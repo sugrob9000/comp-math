@@ -1,23 +1,26 @@
 #include "gauss/gui.hpp"
 #include "gui.hpp"
 #include "imcpp20.hpp"
+#include "task.hpp"
 #include <chrono>
-#include <optional>
 #include <thread>
+
+struct Root_seek: Task {
+	void gui_frame () override {
+	}
+	~Root_seek () override = default;
+};
 
 int main ()
 {
 	gui::init(1280, 760);
-
-	gauss::Input input;
-	std::optional<gauss::Output> output;
-
-	using clock = std::chrono::steady_clock;
+	std::unique_ptr<Task> task;
 
 	// Draw at least this many frames at a steady rate after an event
 	constexpr int max_frames_since_event = 2;
 	int frames_since_event = 0;
 
+	using clock = std::chrono::steady_clock;
 	constexpr auto target_frame_time = std::chrono::microseconds{ 1000'000 / 60 };
 	clock::time_point next_frame_time;
 
@@ -61,35 +64,21 @@ int main ()
 			if (show_demo)
 				ImGui::ShowDemoWindow(&show_demo);
 
-			constexpr auto window_flags
-				= ImGuiWindowFlags_NoCollapse
-				| ImGuiWindowFlags_NoResize
-				| ImGuiWindowFlags_NoMove
-				| ImGuiWindowFlags_NoSavedSettings
-				| ImGuiWindowFlags_NoBringToFrontOnFocus;
-
-			const auto& viewport = ImGui::GetMainViewport();
-			const float x = viewport->WorkPos.x;
-			const float y = viewport->WorkPos.y;
-			const float width = viewport->WorkSize.x;
-			const float height = viewport->WorkSize.y;
-
-			ImGui::SetNextWindowPos({ x, y });
-			ImGui::SetNextWindowSize({ width / 2, height });
-			if (auto w = ImScoped::Window("Ввод", nullptr, window_flags))
-				input.widget();
-
-			ImGui::SetNextWindowPos({ x + width / 2, y });
-			ImGui::SetNextWindowSize({ width / 2, height });
-			if (auto w = ImScoped::Window("Вывод", nullptr, window_flags)) {
-				if (ImGui::Button("Вычислить"))
-					output.emplace(input);
-				if (output) {
-					ImGui::SameLine();
-					if (ImGui::Button("Сбросить"))
-						output.reset();
-					else
-						output->widget();
+			if (task) {
+				// Show current task
+				bool to_main_menu = false;
+				if (auto bar = ImScoped::MainMenuBar()) {
+					to_main_menu |= ImGui::SmallButton("Главное меню");
+					should_quit |= ImGui::SmallButton("Выйти");
+				}
+				task->gui_frame();
+				if (to_main_menu)
+					task.reset();
+			} else {
+				// Show main menu with task selection
+				if (auto window = ImScoped::Window("Меню")) {
+					if (ImGui::Button("Метод Гаусса")) task.reset(new Gauss);
+					if (ImGui::Button("Поиск корней")) task.reset(new Root_seek);
 				}
 			}
 

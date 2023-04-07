@@ -153,14 +153,18 @@ void begin_frame ()
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplSDL2_NewFrame();
 	ImGui::NewFrame();
+
+	const auto& ctx = *global_context;
+	glViewport(0, 0, ctx.resolution.x, ctx.resolution.y);
+
+	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
 }
 
 void end_frame ()
 {
-	const auto& ctx = *global_context;
-	glViewport(0, 0, ctx.resolution.x, ctx.resolution.y);
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-	SDL_GL_SwapWindow(ctx.window);
+	SDL_GL_SwapWindow(global_context->window);
 }
 } // namespace gui

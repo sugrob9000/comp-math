@@ -54,6 +54,7 @@ using Table = detail::Widget<ImGui::BeginTable, ImGui::EndTable>;
 using TabBar = detail::Widget<ImGui::BeginTabBar, ImGui::EndTabBar>;
 using TabItem = detail::Widget<ImGui::BeginTabItem, ImGui::EndTabItem>;
 
+using MainMenuBar = detail::Widget<ImGui::BeginMainMenuBar, ImGui::EndMainMenuBar>;
 using MenuBar = detail::Widget<ImGui::BeginMenuBar, ImGui::EndMenuBar>;
 using Menu = detail::Widget<ImGui::BeginMenu, ImGui::EndMenu>;
 
