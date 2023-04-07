@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.17)
 project(task1 LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(src-dir src)
@@ -18,6 +17,8 @@ add_subdirectory(${libsrc-dir})
 file(GLOB_RECURSE src-files CONFIGURE_DEPENDS ${src-dir}/*.cpp ${src-dir}/*.hpp)
 add_executable(${exec} ${src-files})
 
+target_compile_features(${exec} PRIVATE cxx_std_20)
+
 target_include_directories(${exec} PRIVATE ${src-dir})
 # SYSTEM to ignore warnings in library headers
 target_include_directories(${exec} SYSTEM PRIVATE ${libsrc-dir})
@@ -31,13 +32,10 @@ target_link_libraries(${exec}
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 	set(cxx-warnings -Wall -Wextra -Wpedantic -Wshadow -Wattributes -Wstrict-aliasing)
 	target_compile_options(${exec} PRIVATE ${cxx-warnings} -fmax-errors=1 -fconcepts-diagnostics-depth=10)
-
 	if(CMAKE_BUILD_TYPE STREQUAL Debug)
 		target_compile_options(${exec} PRIVATE -fsanitize=undefined -Og)
 		target_link_options(${exec} PRIVATE -fsanitize=undefined)
 	endif()
-else()
-	message(WARNING "Compiler other than GCC - will miss some options")
 endif()
 
 add_custom_target(run
