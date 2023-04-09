@@ -1,11 +1,10 @@
 #include "gui.hpp"
 #include "util/util.hpp"
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_opengl.h>
 #include <fstream>
 #include <glm/glm.hpp>
-#include <imgui/imgui_impl_opengl3.h>
 #include <imgui/imgui_impl_sdl2.h>
+#include <imgui/imgui_impl_sdlrenderer.h>
 #include <memory>
 #include <optional>
 
@@ -16,7 +15,7 @@ namespace {
 struct Context {
 	Resolution resolution;
 	SDL_Window* window;
-	SDL_GLContext gl_context;
+	SDL_Renderer* renderer;
 	ImGuiIO* im_io;
 
 	constexpr static const char window_title[] = "Вариант 31";
@@ -25,26 +24,20 @@ struct Context {
 		if (SDL_Init(SDL_INIT_VIDEO) < 0)
 			FATAL("Failed to initialize SDL: {}", SDL_GetError());
 
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-
 		SDL_SetHint(SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0");
 
 		window = SDL_CreateWindow(window_title,
 				SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 				resolution.x, resolution.y,
-				SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+				SDL_WINDOW_RESIZABLE);
 		if (!window)
 			FATAL("Failed to create SDL window: {}", SDL_GetError());
 
+		renderer = SDL_CreateRenderer(window, -1, 0);
+		if (!renderer)
+			FATAL("Failed to create SDL renderer: {}", SDL_GetError());
+
 		set_icon("icon");
-
-		SDL_GL_SetSwapInterval(0);
-
-		gl_context = SDL_GL_CreateContext(window);
-		if (!gl_context)
-			FATAL("Failed to create SDL GL context: {}", SDL_GetError());
 
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
@@ -59,15 +52,14 @@ struct Context {
 		im_io->ConfigInputTextCursorBlink = false;
 
 		ImGui::StyleColorsLight();
-		ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
-		ImGui_ImplOpenGL3_Init();
+		ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
+		ImGui_ImplSDLRenderer_Init(renderer);
 	}
 
 	~Context () {
-		ImGui_ImplOpenGL3_Shutdown();
+		ImGui_ImplSDLRenderer_Shutdown();
 		ImGui_ImplSDL2_Shutdown();
 
-		SDL_GL_DeleteContext(gl_context);
 		SDL_DestroyWindow(window);
 		SDL_Quit();
 	}
@@ -150,21 +142,19 @@ Event_process_result process_event (const SDL_Event& event)
 
 void begin_frame ()
 {
-	ImGui_ImplOpenGL3_NewFrame();
+	ImGui_ImplSDLRenderer_NewFrame();
 	ImGui_ImplSDL2_NewFrame();
 	ImGui::NewFrame();
 
-	const auto& ctx = *global_context;
-	glViewport(0, 0, ctx.resolution.x, ctx.resolution.y);
-
-	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
+	SDL_Renderer* renderer = global_context->renderer;
+	SDL_SetRenderDrawColor(renderer, 180, 180, 180, 255);
+	SDL_RenderClear(renderer);
 }
 
 void end_frame ()
 {
 	ImGui::Render();
-	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-	SDL_GL_SwapWindow(global_context->window);
+	ImGui_ImplSDLRenderer_RenderDrawData(ImGui::GetDrawData());
+	SDL_RenderPresent(global_context->renderer);
 }
 } // namespace gui
