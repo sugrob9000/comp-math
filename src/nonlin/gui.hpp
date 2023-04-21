@@ -1,37 +1,48 @@
 #pragma once
 
+#include "math.hpp"
+#include "nonlin/calc.hpp"
 #include "task.hpp"
-#include <glm/vec2.hpp>
+#include <variant>
 #include <vector>
 
-using Dvec2 = glm::vec<2, double, glm::packed>;
-using Fvec2 = glm::vec<2, float, glm::packed>;
+namespace math {
+struct Chords_result { std::vector<math::Chord> chords; };
+struct Newton_result {};
+struct Iteration_result {};
+using Calculation = std::variant<
+	std::monostate,
+	Chords_result,
+	Newton_result,
+	Iteration_result>;
+};
 
 // Single non-linear equation solver
 class Nonlinear: public Task {
-	enum class Method { chords, newton, iteration, };
-	Method active_method;
+	math::Calculation calculation;
+	void update_calculation ();
+	template <typename T> void method_option_widget (const char* name);
+
 	unsigned active_function_id = 0;
 
-	double precision = 1e-3;
-
-	Dvec2 view_low { -1, -1 };
-	Dvec2 view_high { 1, 1 };
+	math::Dvec2 view_low { -1.2, -1 };
+	math::Dvec2 view_high { 1.2, 1 };
 
 	enum Coordinate: unsigned { X = 0, Y = 1 };
 	double view_transform_x (double x) const;
 	double view_transform_y (double y) const;
 	double view_transform_i (Coordinate i, double coord) const;
-	Dvec2 view_transform (Dvec2 v) const;
+	math::Dvec2 view_transform (math::Dvec2 v) const;
 
-	double seek_low = -1;
+	double seek_low = 0;
 	double seek_high = 1;
+	double precision = 1e-3;
 
 	struct Graph_display_cache {
 		constexpr static size_t resolution = 200;
 		float buffer[resolution];
 		unsigned function_id = -1;
-		Dvec2 view_low, view_high;
+		math::Dvec2 view_low, view_high;
 	};
 	Graph_display_cache graph_cache;
 	void update_graph_cache ();

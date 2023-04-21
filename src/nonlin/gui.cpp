@@ -1,4 +1,5 @@
 #include "imcpp20.hpp"
+#include "nonlin/calc.hpp"
 #include "nonlin/gui.hpp"
 #include "util/util.hpp"
 #include <cmath>
@@ -42,9 +43,23 @@ double Nonlinear::view_transform_i (Coordinate i, double coord) const
 	return i == X ? view_transform_x(coord) : view_transform_y(coord);
 }
 
-Dvec2 Nonlinear::view_transform (Dvec2 v) const
+math::Dvec2 Nonlinear::view_transform (math::Dvec2 v) const
 {
 	return { view_transform_x(v.x), view_transform_y(v.y) };
+}
+
+
+void Nonlinear::update_calculation ()
+{
+	auto f = functions[active_function_id].compute;
+	std::visit(Overloaded{
+		[&] (std::monostate) { /* No method chosen: do nothing */ },
+		[&] (math::Chords_result& cr) {
+			cr.chords = math::build_chords(f, seek_low, seek_high, precision);
+		},
+		[&] (math::Newton_result&) { },
+		[&] (math::Iteration_result&) { }
+	}, calculation);
 }
 
 
@@ -62,56 +77,66 @@ void Nonlinear::gui_frame ()
 	}
 }
 
+template <typename T> void Nonlinear::method_option_widget (const char* name)
+{
+	if (RadioButton(name, std::holds_alternative<T>(calculation))) {
+		calculation.emplace<T>();
+		update_calculation();
+	}
+}
+
 void Nonlinear::settings_widget ()
 {
 	constexpr float drag_speed = 0.03;
 
 	if (auto t = ImScoped::TreeNode("Метод")) {
-		constexpr static std::pair<Method, const char*> methods[] = {
-			{ Method::chords, "Хорд" },
-			{ Method::newton, "Ньютона" },
-			{ Method::iteration, "Простой итерации" },
-		};
-		for (auto [method, name]: methods) {
-			if (RadioButton(name, active_method == method))
-				active_method = method;
-		}
+		method_option_widget<math::Chords_result>("Хорд");
+		method_option_widget<math::Newton_result>("Ньютона");
+		method_option_widget<math::Iteration_result>("Простой итерации");
 
 		constexpr auto min = std::numeric_limits<double>::lowest();
 		constexpr auto max = std::numeric_limits<double>::max();
-		constexpr auto small = std::numeric_limits<double>::min();  // >0
+
+		bool changed = false;
 
 		TextUnformatted("Интервал изоляции корня");
 		const double min_seek_width = 1e-2;
-		const char* printf_fmt = "%.2f";
+		const char* fmt = "%.2f";
 		PushItemWidth(CalcItemWidth() * 0.5);
-		Drag("##il", &seek_low, drag_speed, min, seek_high - min_seek_width, printf_fmt);
+		changed |= Drag("##il", &seek_low, drag_speed, min, seek_high - min_seek_width, fmt);
 		SameLine();
-		Drag("##ih", &seek_high, drag_speed, seek_low + min_seek_width, max, printf_fmt);
+		changed |= Drag("##ih", &seek_high, drag_speed, seek_low + min_seek_width, max, fmt);
 		PopItemWidth();
 
-		Drag("Точность", &precision, 1e-4, small, 0.1, nullptr, ImGuiSliderFlags_Logarithmic);
+		constexpr double min_precision = 1e-6;
+		constexpr double max_precision = 1e-1;
+		changed |= Drag("Точность", &precision, 1e-4,
+				min_precision, max_precision, nullptr, ImGuiSliderFlags_Logarithmic);
+
+		if (changed) update_calculation();
 	}
 
 	if (auto t = ImScoped::TreeNode("Функция")) {
 		for (unsigned id = 0; id < std::size(functions); id++) {
-			if (RadioButton(functions[id].name, active_function_id == id))
+			if (RadioButton(functions[id].name, active_function_id == id)) {
 				active_function_id = id;
+				update_calculation();
+			}
 		}
 	}
 
 	if (auto t = ImScoped::TreeNode("Вид")) {
-		const Dvec2 center = (view_low + view_high) * 0.5;
-		if (Dvec2 delta = center; DragN("Центр", glm::value_ptr(delta), 2, drag_speed)) {
+		const math::Dvec2 center = (view_low + view_high) * 0.5;
+		if (math::Dvec2 delta = center; DragN("Центр", glm::value_ptr(delta), 2, drag_speed)) {
 			delta -= center;
 			view_low += delta;
 			view_high += delta;
 		}
 
-		const Dvec2 scale = (view_high - view_low);
+		const math::Dvec2 scale = (view_high - view_low);
 		constexpr double min_scale = 0.5;
 		constexpr double max_scale = 250;
-		if (Dvec2 resc = scale;
+		if (math::Dvec2 resc = scale;
 				DragN("Размер", glm::value_ptr(resc), 2, drag_speed, min_scale, max_scale)) {
 			resc /= scale;
 			view_low = center + (view_low - center) * resc;
@@ -156,6 +181,9 @@ struct Graph_draw_context {
 	float screen_transform_i (Nonlinear::Coordinate i, double coord) {
 		return i == Nonlinear::X ? screen_transform_x(coord) : screen_transform_y(coord);
 	}
+	math::Fvec2 screen_transform (math::Fvec2 v) {
+		return { screen_transform_x(v.x), screen_transform_y(v.y) };
+	}
 
 	constexpr static int ideal_num_gridlines = 20;
 	constexpr static double gridline_steps[] = {
@@ -184,7 +212,7 @@ struct Graph_draw_context {
 
 		// Draw the lines and numbers
 		for (double coord = step * std::ceil(vl / step); coord < vh; coord += step) {
-			if (std::abs(coord) < step * 0.5) continue; // Don't duplicate the 0-lines
+			if (std::abs(coord) < step * 0.5) continue; // Don't duplicate the axes
 			ImVec2 line_begin = pos, line_end = end;
 			line_begin[i] = line_end[i] = screen_transform_i(i, nl.view_transform_i(i, coord));
 			dl.AddLine(line_begin, line_end, color_thin_lines, 1.0);
@@ -195,10 +223,7 @@ struct Graph_draw_context {
 	}
 
 	void xy_axes () {
-		Fvec2 zero = {
-			screen_transform_x(nl.view_transform_x(0)),
-			screen_transform_y(nl.view_transform_y(0))
-		};
+		math::Fvec2 zero = screen_transform(nl.view_transform({ 0, 0 }));
 		dl.AddLine({ zero.x, pos.y }, { zero.x, end.y }, color_thick_lines, 2.0f);
 		dl.AddLine({ pos.x, zero.y }, { end.x, zero.y }, color_thick_lines, 2.0f);
 		const char zero_char[1] = { '0' };
@@ -219,8 +244,21 @@ struct Graph_draw_context {
 			const float norm_y1 = nl.graph_cache.buffer[i-1];
 			const float norm_y2 = nl.graph_cache.buffer[i];
 			// Skip if both heights is offscreen
-			if ((norm_y1 >= 0 && norm_y1 <= 1) || (norm_y2 >= 0 && norm_y1 <= 1))
-				dl.AddLine({ x, size.y * norm_y1 }, { x + x_step, size.y * norm_y2 }, color, 2.0f);
+			if ((norm_y1 >= 0 && norm_y1 <= 1) || (norm_y2 >= 0 && norm_y1 <= 1)) {
+				const float y1 = screen_transform_y(norm_y1);
+				const float y2 = screen_transform_y(norm_y2);
+				dl.AddLine({ x, y1 }, { x + x_step, y2 }, color, 2.0f);
+			}
+		}
+	}
+
+	void chords (uint32_t color) {
+		if (!std::holds_alternative<math::Chords_result>(nl.calculation)) return;
+		auto& cr = std::get<math::Chords_result>(nl.calculation);
+		for (const auto& [a, b]: cr.chords) {
+			auto aa = screen_transform(nl.view_transform(a));
+			auto bb = screen_transform(nl.view_transform(b));
+			dl.AddLine({ aa.x, aa.y }, { bb.x, bb.y }, color, 1.5);
 		}
 	}
 };
@@ -228,10 +266,14 @@ struct Graph_draw_context {
 void Nonlinear::graph_widget () const
 {
 	Graph_draw_context g(*this);
+
 	g.gridlines_for_coordinate(X);
 	g.gridlines_for_coordinate(Y);
 	g.xy_axes();
+
 	g.vertical_line(view_transform_x(seek_low));
 	g.vertical_line(view_transform_x(seek_high));
+
 	g.function_graph(0xFF'AA00FF);
+	g.chords(0xFF'00AAAA);
 }
