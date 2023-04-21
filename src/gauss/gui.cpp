@@ -7,6 +7,13 @@
 using namespace ImGui;
 using namespace ImScoped;
 
+constexpr static ImGuiWindowFlags static_window_flags
+	= ImGuiWindowFlags_NoCollapse
+	| ImGuiWindowFlags_NoResize
+	| ImGuiWindowFlags_NoMove
+	| ImGuiWindowFlags_NoSavedSettings
+	| ImGuiWindowFlags_NoBringToFrontOnFocus;
+
 constexpr static ImColor error_text_color(0.9f, 0.2f, 0.2f, 1.0f);
 
 /*
@@ -209,7 +216,7 @@ void Gauss::Output::widget () const
 
 void Gauss::gui_frame ()
 {
-	const auto& viewport = ImGui::GetMainViewport();
+	const auto viewport = ImGui::GetMainViewport();
 	const float x = viewport->WorkPos.x;
 	const float y = viewport->WorkPos.y;
 	const float width = viewport->WorkSize.x;

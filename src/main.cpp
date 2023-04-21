@@ -1,20 +1,15 @@
 #include "gauss/gui.hpp"
 #include "gui.hpp"
 #include "imcpp20.hpp"
+#include "nonlin/gui.hpp"
 #include "task.hpp"
 #include <chrono>
 #include <thread>
 
-struct Root_seek: Task {
-	void gui_frame () override {
-	}
-	~Root_seek () override = default;
-};
-
 int main ()
 {
 	gui::init(1280, 760);
-	std::unique_ptr<Task> task;
+	std::unique_ptr<Task> task(new Nonlinear);
 
 	// Draw at least this many frames at a steady rate after an event
 	constexpr int max_frames_since_event = 2;
@@ -78,7 +73,7 @@ int main ()
 				// Show main menu with task selection
 				if (auto window = ImScoped::Window("Меню")) {
 					if (ImGui::Button("Метод Гаусса")) task.reset(new Gauss);
-					if (ImGui::Button("Поиск корней")) task.reset(new Root_seek);
+					if (ImGui::Button("Поиск корней")) task.reset(new Nonlinear);
 				}
 			}
 

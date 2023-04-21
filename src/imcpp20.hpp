@@ -63,7 +63,7 @@ using MainMenuBar = IM_WIDGET(ImGui::BeginMainMenuBar, ImGui::EndMainMenuBar);
 using MenuBar = IM_WIDGET(ImGui::BeginMenuBar, ImGui::EndMenuBar);
 using Menu = IM_WIDGET(ImGui::BeginMenu, ImGui::EndMenu);
 
-using Combo = IM_WIDGET(ImGui::BeginCombo, ImGui::EndCombo);
+using DropdownCombo = IM_WIDGET(ImGui::BeginCombo, ImGui::EndCombo);
 using ListBox = IM_WIDGET(ImGui::BeginListBox, ImGui::EndListBox);
 using Tooltip = IM_WIDGET(ImGui::BeginTooltip, ImGui::EndTooltip);
 
@@ -72,6 +72,8 @@ using PopupModal = IM_WIDGET(ImGui::BeginPopupModal, ImGui::EndPopup);
 
 using DragDropSource = IM_WIDGET(ImGui::BeginDragDropSource, ImGui::EndDragDropSource);
 using DragDropTarget = IM_WIDGET(ImGui::BeginDragDropTarget, ImGui::EndDragDropTarget);
+
+using TreeNode = IM_WIDGET(ImGui::TreeNode, ImGui::TreePop);
 
 #undef IM_WIDGET
 } // namespace ImScoped
