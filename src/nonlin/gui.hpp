@@ -6,22 +6,18 @@
 #include <variant>
 #include <vector>
 
-namespace math {
-struct Chords_result { std::vector<math::Chord> chords; };
-struct Newton_result {};
-struct Iteration_result {};
-using Calculation = std::variant<
-	std::monostate,
-	Chords_result,
-	Newton_result,
-	Iteration_result>;
-};
-
 // Single non-linear equation solver
 class Nonlinear: public Task {
-	math::Calculation calculation;
+	using Calculation = std::variant<
+		std::monostate,
+		math::Chords_result,
+		math::Newton_result,
+		math::Iteration_result>;
+	Calculation calculation;
 	void update_calculation ();
 	template <typename T> void method_option_widget (const char* name);
+	template <typename... Ops> void visit_calculation (Ops&&...);
+	template <typename... Ops> void visit_calculation (Ops&&...) const;
 
 	unsigned active_function_id = 0;
 
@@ -37,6 +33,7 @@ class Nonlinear: public Task {
 	double seek_low = 0;
 	double seek_high = 1;
 	double precision = 1e-3;
+	double lambda = 1;  // for use with fixed-point iteration
 
 	struct Graph_display_cache {
 		constexpr static size_t resolution = 200;
@@ -49,6 +46,7 @@ class Nonlinear: public Task {
 
 	void settings_widget ();
 	void graph_widget () const;
+	void maybe_result_window () const;
 
 	friend struct Graph_draw_context;
 

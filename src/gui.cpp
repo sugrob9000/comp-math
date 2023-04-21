@@ -43,10 +43,20 @@ struct Context {
 		ImGui::CreateContext();
 		im_io = &ImGui::GetIO();
 
-		constexpr float font_size = 20;
-		auto fonts = im_io->Fonts;
-		fonts->AddFontFromFileTTF("DejaVuSansMono.ttf", font_size, nullptr,
-				fonts->GetGlyphRangesCyrillic());
+		{
+			constexpr float font_size = 20;
+			auto fonts = im_io->Fonts;
+
+			ImFontGlyphRangesBuilder builder;
+			builder.AddRanges(fonts->GetGlyphRangesCyrillic());
+			builder.AddRanges(fonts->GetGlyphRangesGreek());
+			ImVector<ImWchar> ranges;
+			builder.BuildRanges(&ranges);
+
+			fonts->AddFontFromFileTTF("DejaVuSansMono.ttf", font_size, nullptr,
+					ranges.begin());
+			fonts->Build();
+		}
 
 		// we don't use a steady framerate anyway
 		im_io->ConfigInputTextCursorBlink = false;
