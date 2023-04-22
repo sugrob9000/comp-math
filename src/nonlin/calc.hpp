@@ -8,9 +8,11 @@ namespace math {
 
 struct Result {
 	double root = 0;
+	double value_at_root = 0;
 	bool has_root = false;
-	void success (double r) {
+	void success (double r, double v) {
 		root = r;
+		value_at_root = v;
 		has_root = true;
 	}
 };

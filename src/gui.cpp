@@ -62,6 +62,8 @@ struct Context {
 		im_io->ConfigInputTextCursorBlink = false;
 
 		ImGui::StyleColorsLight();
+		ImGui::GetStyle().WindowRounding = 8;
+
 		ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
 		ImGui_ImplSDLRenderer_Init(renderer);
 	}
@@ -157,7 +159,7 @@ void begin_frame ()
 	ImGui::NewFrame();
 
 	SDL_Renderer* renderer = global_context->renderer;
-	SDL_SetRenderDrawColor(renderer, 180, 180, 180, 255);
+	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 	SDL_RenderClear(renderer);
 }
 

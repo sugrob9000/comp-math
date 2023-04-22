@@ -40,6 +40,11 @@ constexpr static Function_spec functions[] = {
 		"exp(-x²) - 0.5",
 		[] (double x) { return exp(-x*x) - 0.5; },
 		[] (double x) { return -2 * exp(-x*x) * x; }
+	},
+	{
+		"sqrt(x + 3) - 3.333",
+		[] (double x) { return sqrt(x + 3) - 3.333; },
+		[] (double x) { return 0.5/sqrt(x + 3); }
 	}
 };
 
@@ -67,6 +72,8 @@ math::Dvec2 Nonlinear::view_transform (math::Dvec2 v) const
 
 void Nonlinear::update_calculation ()
 {
+	if (no_chosen_method()) return;
+
 	auto f = functions[active_function_id].compute;
 	auto dfdx = functions[active_function_id].compute_derivative;
 
@@ -75,28 +82,23 @@ void Nonlinear::update_calculation ()
 				cr = math::build_chords(f, seek_low, seek_high, precision);
 			},
 			[&] (math::Newton_result& nr) {
-				nr = math::newtons_method(f, dfdx, seek_low, precision);
+				nr = math::newtons_method(f, dfdx, initial_guess, precision);
 			},
 			[&] (math::Iteration_result& ir) {
-				ir = math::fixed_point_iteration(f, lambda, (seek_low + seek_high) * 0.5, precision);
+				ir = math::fixed_point_iteration(f, lambda, initial_guess, precision);
 			});
 }
 
 
 void Nonlinear::gui_frame ()
 {
+	SetNextWindowSizeConstraints({ 300, -1 }, { 1000, -1 });
 	if (auto w = Window("Параметры", nullptr, floating_window_flags))
 		settings_widget();
-
 	maybe_result_window();
 
-	const auto& viewport = ImGui::GetMainViewport();
-	SetNextWindowPos(viewport->WorkPos);
-	SetNextWindowSize(viewport->WorkSize);
-	if (auto w = Window("graph", nullptr, fullscreen_window_flags)) {
-		update_graph_cache();
-		graph_widget();
-	}
+	update_graph_cache();
+	graph_widget();
 }
 
 template <typename T> void Nonlinear::method_option_widget (const char* name)
@@ -117,6 +119,17 @@ template <typename... Ops> void Nonlinear::visit_calculation (Ops&&... ops) cons
 	std::visit(Overloaded{ [] (std::monostate) {}, std::forward<Ops>(ops)... }, calculation);
 }
 
+template <typename T> bool Nonlinear::chosen_method_is () const
+{
+	return std::holds_alternative<T>(calculation);
+}
+
+bool Nonlinear::no_chosen_method () const
+{
+	return chosen_method_is<std::monostate>();
+}
+
+
 void Nonlinear::settings_widget ()
 {
 	constexpr float drag_speed = 0.03;
@@ -127,19 +140,20 @@ void Nonlinear::settings_widget ()
 		method_option_widget<math::Newton_result>("Ньютона");
 		method_option_widget<math::Iteration_result>("Простой итерации");
 
+		constexpr auto min = std::numeric_limits<double>::lowest();
+		constexpr auto max = std::numeric_limits<double>::max();
 		bool changed = false;
 
-		if (std::holds_alternative<math::Iteration_result>(calculation)) {
-			constexpr double threshold = 0.001;
-			changed |= Drag("λ", &lambda, drag_speed, threshold, 1/threshold);
-			if (double one_over = 1.0/lambda; Drag("1/λ", &one_over, drag_speed, threshold)) {
+		if (chosen_method_is<math::Iteration_result>()) {
+			PushItemWidth(CalcItemWidth() * 0.5);
+			changed |= Drag("λ", &lambda, drag_speed);
+			SameLine();
+			if (double one_over = 1.0/lambda; Drag("1/λ", &one_over, drag_speed)) {
 				lambda = 1.0 / one_over;
 				changed = true;
 			}
+			PopItemWidth();
 		}
-
-		constexpr auto min = std::numeric_limits<double>::lowest();
-		constexpr auto max = std::numeric_limits<double>::max();
 
 		// Input interval when using chords, just one initial guess otherwise
 		const char* fmt = "%.2f";
@@ -154,13 +168,15 @@ void Nonlinear::settings_widget ()
 					PopItemWidth();
 				},
 				[&] (math::Result& r) {
-					changed |= Drag("Начальная оценка", &seek_low, drag_speed, min, max, fmt);
+					changed |= Drag("Начальная оценка", &initial_guess, drag_speed, min, max, fmt);
 				});
 
-		constexpr double min_precision = 1e-6;
-		constexpr double max_precision = 1e-1;
-		changed |= Drag("Погрешность", &precision, 1e-4,
-				min_precision, max_precision, nullptr, ImGuiSliderFlags_Logarithmic);
+		if (!no_chosen_method()) {
+			constexpr double min_precision = 1e-6;
+			constexpr double max_precision = 1e-1;
+			changed |= Drag("Погрешность", &precision, 1e-4,
+					min_precision, max_precision, nullptr, ImGuiSliderFlags_Logarithmic);
+		}
 
 		if (changed) update_calculation();
 	}
@@ -196,18 +212,22 @@ void Nonlinear::settings_widget ()
 
 void Nonlinear::maybe_result_window () const
 {
-	if (std::holds_alternative<std::monostate>(calculation)) return;
+	if (no_chosen_method()) return;
+
 	if (auto w = Window("Результат", nullptr, floating_window_flags)) {
 		PushTextWrapPos(300);
 		visit_calculation(
 				[&] (const math::Chords_result& r) {
 					if (r.has_root) {
-						TextFmt("{} хорд, чтобы достичь точности {}", r.lines.size(), precision);
-						TextFmt("Оценка корня: {:.6}", r.root);
+						TextFmt("{} хорд, чтобы достичь точности {}\n",
+								"Оценка корня: {:.6}\n"
+								"Значение функции: {:.6}",
+								r.lines.size(), precision,
+								r.root, r.value_at_root);
 					} else {
 						TextUnformatted(
-								"Функция принимает значения одного знака на концах интервала:"
-								"наличие корня не гарантировано.");
+								"Функция принимает значения одного знака на концах интервала: "
+								"нельзя начать алгоритм хорд.");
 					}
 				},
 				[&] (const math::Newton_result& r) {
@@ -216,7 +236,7 @@ void Nonlinear::maybe_result_window () const
 								r.lines.size(), precision);
 						TextFmt("Оценка корня: {:.6}", r.root);
 					} else {
-						TextFmt("Метод не сошёлся после {} итераций.", r.lines.size());
+						TextFmt("Алгоритм расходится после {} итераций", r.lines.size());
 					}
 				},
 				[&] (const math::Iteration_result& r) {
@@ -224,7 +244,7 @@ void Nonlinear::maybe_result_window () const
 						TextFmt("{} шагов, чтобы достичь точности {}", r.steps.size(), precision);
 						TextFmt("Оценка корня: {:.6}", r.root);
 					} else {
-						TextFmt("Метод не сошёлся после {} итераций.", r.steps.size());
+						TextFmt("Алгоритм расходится после {} итераций", r.steps.size());
 					}
 				});
 		PopTextWrapPos();
@@ -255,7 +275,9 @@ struct Graph_draw_context {
 	const Nonlinear& nl;
 	ImDrawList& dl;
 	ImVec2 pos, end, size;
-	uint32_t color_thick_lines, color_thin_lines;
+
+	constexpr static uint32_t color_thick_lines = 0xFF000000;
+	constexpr static uint32_t color_thin_lines = 0xFFAAAAAA;
 	constexpr static uint32_t color_interval = 0xFFFF0000;
 
 	float screen_transform_x (double x) { x *= size.x; x += pos.x; return x; }
@@ -273,11 +295,9 @@ struct Graph_draw_context {
 	};
 
 	Graph_draw_context (const Nonlinear& nl_)
-		: nl{nl_}, dl{*GetWindowDrawList()},
+		: nl{nl_}, dl{*GetBackgroundDrawList()},
 		pos{dl.GetClipRectMin()}, end{dl.GetClipRectMax()},
-		size{ end.x - pos.x, end.y - pos.y },
-		color_thick_lines{ GetColorU32(ImGuiCol_Text) },
-		color_thin_lines{ GetColorU32(ImGuiCol_TextDisabled) } {}
+		size{ end.x - pos.x, end.y - pos.y } {}
 
 	void gridlines_for_coordinate (Nonlinear::Coordinate i) {
 		const double vl = nl.view_low[i];
@@ -335,7 +355,7 @@ struct Graph_draw_context {
 			if ((norm_y1 >= 0 && norm_y1 <= 1) || (norm_y2 >= 0 && norm_y1 <= 1)) {
 				const float y1 = screen_transform_y(norm_y1);
 				const float y2 = screen_transform_y(norm_y2);
-				dl.AddLine({ x, y1 }, { x + x_step, y2 }, color, 2.0f);
+				dl.AddLine({ x, y1 }, { x + x_step, y2 }, color, 3.0f);
 			}
 		}
 	}
@@ -364,7 +384,7 @@ struct Graph_draw_context {
 					vertical_line(nl.seek_high, color_interval);
 				},
 				[&] (const math::Result&) {
-					vertical_line(nl.seek_low, color_interval);
+					vertical_line(nl.initial_guess, color_interval);
 				});
 
 		// Any result may have a root

@@ -49,7 +49,7 @@ public:
 	detail::Widget<[] (auto&&... args) { return BEGIN(std::forward<decltype(args)>(args)...); }, __VA_ARGS__>
 
 using Window = IM_WIDGET(ImGui::Begin, ImGui::End, true);
-using ChildWindow = IM_WIDGET(ImGui::BeginChild, ImGui::EndChild);
+using ChildWindow = IM_WIDGET(ImGui::BeginChild, ImGui::EndChild, true);
 using ChildFrame = IM_WIDGET(ImGui::BeginChildFrame, ImGui::EndChildFrame);
 
 using Group = IM_WIDGET(ImGui::BeginGroup, ImGui::EndGroup);

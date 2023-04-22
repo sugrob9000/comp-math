@@ -22,7 +22,7 @@ Chords_result build_chords (double (*f) (double), double low, double high, doubl
 		const double mid = low + f_low * (high - low) / (f_low - f_high);
 		const double f_mid = f(mid);
 		if (std::abs(f_mid) < precision) {
-			result.success(mid);
+			result.success(mid, f_mid);
 			return result;
 		} else if ((f_mid > 0) == (f_high > 0)) {
 			high = mid;
@@ -46,7 +46,7 @@ Newton_result newtons_method
 
 	for (size_t i = 0; i < max_iterations; i++) {
 		if (std::abs(fx) < precision) {
-			result.success(x);
+			result.success(x, fx);
 			return result;
 		}
 
@@ -70,13 +70,14 @@ Iteration_result fixed_point_iteration
 	double x = initial_guess;
 	double last_x = initial_guess + 2 * precision;
 	for (size_t i = 0; i < max_iterations; i++) {
-		if (std::abs(last_x - x) < precision || std::abs(f(x)) < precision) {
-			result.success(x);
+		double fx = f(x);
+		if (std::abs(last_x - x) < precision || std::abs(fx) < precision) {
+			result.success(x, fx);
 			return result;
 		}
 		result.steps.push_back(x);
 		last_x = x;
-		x += lambda * f(x);
+		x += lambda * fx;
 	}
 	return result;
 }

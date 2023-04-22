@@ -71,9 +71,10 @@ int main ()
 					task.reset();
 			} else {
 				// Show main menu with task selection
-				if (auto window = ImScoped::Window("Меню")) {
+				if (auto window = ImScoped::Window("Меню", nullptr,
+						ImGuiWindowFlags_AlwaysAutoResize)) {
 					if (ImGui::Button("Метод Гаусса")) task.reset(new Gauss);
-					if (ImGui::Button("Поиск корней")) task.reset(new Nonlinear);
+					if (ImGui::Button("Решение нелинейного уравнения")) task.reset(new Nonlinear);
 				}
 			}
 
