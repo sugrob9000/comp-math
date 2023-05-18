@@ -35,47 +35,48 @@ public:
 
 	explicit operator bool () const& { return Shown; }
 
-	// Stop "if (ImGui::Window(...))" etc. from compiling, this is wrong as it calls the destructor immediately
+	// Stop "if (ImScoped::Window(...))" etc. from compiling, this is wrong as it calls the destructor immediately
+	// Correct usage is "if (auto w = ImScoped::Window(...))"
 	explicit operator bool () && = delete;
 
-	// Most other usage should be prohibited, as the resulting program will be wrong and might not even link
+	// Most other usage is disabled, this should only ever be a local variable in a function
 	Widget (const Widget&) = delete;
 	Widget (Widget&&) = delete;
 	Widget& operator= (const Widget&) = delete;
 	Widget& operator= (Widget&&) = delete;
 };
 } // namespace detail
-#define IM_WIDGET(BEGIN, ...) \
+#define IM_SCOPED_WIDGET(BEGIN, ...) \
 	detail::Widget<[] (auto&&... args) { return BEGIN(std::forward<decltype(args)>(args)...); }, __VA_ARGS__>
 
-using Window = IM_WIDGET(ImGui::Begin, ImGui::End, true);
-using ChildWindow = IM_WIDGET(ImGui::BeginChild, ImGui::EndChild, true);
-using ChildFrame = IM_WIDGET(ImGui::BeginChildFrame, ImGui::EndChildFrame);
+using Window = IM_SCOPED_WIDGET(ImGui::Begin, ImGui::End, true);
+using ChildWindow = IM_SCOPED_WIDGET(ImGui::BeginChild, ImGui::EndChild, true);
+using ChildFrame = IM_SCOPED_WIDGET(ImGui::BeginChildFrame, ImGui::EndChildFrame);
 
-using Group = IM_WIDGET(ImGui::BeginGroup, ImGui::EndGroup);
+using Group = IM_SCOPED_WIDGET(ImGui::BeginGroup, ImGui::EndGroup);
 
-using Table = IM_WIDGET(ImGui::BeginTable, ImGui::EndTable);
+using Table = IM_SCOPED_WIDGET(ImGui::BeginTable, ImGui::EndTable);
 
-using TabBar = IM_WIDGET(ImGui::BeginTabBar, ImGui::EndTabBar);
-using TabItem = IM_WIDGET(ImGui::BeginTabItem, ImGui::EndTabItem);
+using TabBar = IM_SCOPED_WIDGET(ImGui::BeginTabBar, ImGui::EndTabBar);
+using TabItem = IM_SCOPED_WIDGET(ImGui::BeginTabItem, ImGui::EndTabItem);
 
-using MainMenuBar = IM_WIDGET(ImGui::BeginMainMenuBar, ImGui::EndMainMenuBar);
-using MenuBar = IM_WIDGET(ImGui::BeginMenuBar, ImGui::EndMenuBar);
-using Menu = IM_WIDGET(ImGui::BeginMenu, ImGui::EndMenu);
+using MainMenuBar = IM_SCOPED_WIDGET(ImGui::BeginMainMenuBar, ImGui::EndMainMenuBar);
+using MenuBar = IM_SCOPED_WIDGET(ImGui::BeginMenuBar, ImGui::EndMenuBar);
+using Menu = IM_SCOPED_WIDGET(ImGui::BeginMenu, ImGui::EndMenu);
 
-using DropdownCombo = IM_WIDGET(ImGui::BeginCombo, ImGui::EndCombo);
-using ListBox = IM_WIDGET(ImGui::BeginListBox, ImGui::EndListBox);
-using Tooltip = IM_WIDGET(ImGui::BeginTooltip, ImGui::EndTooltip);
+using DropdownCombo = IM_SCOPED_WIDGET(ImGui::BeginCombo, ImGui::EndCombo);
+using ListBox = IM_SCOPED_WIDGET(ImGui::BeginListBox, ImGui::EndListBox);
+using Tooltip = IM_SCOPED_WIDGET(ImGui::BeginTooltip, ImGui::EndTooltip);
 
-using Popup = IM_WIDGET(ImGui::BeginPopup, ImGui::EndPopup);
-using PopupModal = IM_WIDGET(ImGui::BeginPopupModal, ImGui::EndPopup);
+using Popup = IM_SCOPED_WIDGET(ImGui::BeginPopup, ImGui::EndPopup);
+using PopupModal = IM_SCOPED_WIDGET(ImGui::BeginPopupModal, ImGui::EndPopup);
 
-using DragDropSource = IM_WIDGET(ImGui::BeginDragDropSource, ImGui::EndDragDropSource);
-using DragDropTarget = IM_WIDGET(ImGui::BeginDragDropTarget, ImGui::EndDragDropTarget);
+using DragDropSource = IM_SCOPED_WIDGET(ImGui::BeginDragDropSource, ImGui::EndDragDropSource);
+using DragDropTarget = IM_SCOPED_WIDGET(ImGui::BeginDragDropTarget, ImGui::EndDragDropTarget);
 
-using TreeNode = IM_WIDGET(ImGui::TreeNode, ImGui::TreePop);
+using TreeNode = IM_SCOPED_WIDGET(ImGui::TreeNode, ImGui::TreePop);
 
-#undef IM_WIDGET
+#undef IM_SCOPED_WIDGET
 } // namespace ImScoped
 
 namespace ImGui {
