@@ -66,12 +66,10 @@ void Nonlinear::gui_frame ()
 		settings_widget();
 	maybe_result_window();
 
-	{ // Draw canvas
-		Graph_draw_context context(graph);
-		context.background();
-		context.function_plot(0xFF'AA00FF, functions[active_function_id].compute);
-		// TODO also visualize results
-	}
+	Graph_draw_context draw(graph);
+	draw.background();
+	draw.function_plot(0xFF'AA00FF, functions[active_function_id].compute);
+	// TODO also visualize results
 }
 
 template <typename T> void Nonlinear::method_option_widget (const char* name)
@@ -133,12 +131,8 @@ void Nonlinear::settings_widget ()
 		visit_calculation(
 				[&] (math::Chords_result& r) {
 					TextUnformatted("Интервал изоляции корня");
-					const double min_seek_width = 1e-2;
-					PushItemWidth(CalcItemWidth() * 0.5);
-					changed |= Drag("##il", &seek_low, drag_speed, min, seek_high - min_seek_width, fmt);
-					SameLine();
-					changed |= Drag("##ih", &seek_high, drag_speed, seek_low + min_seek_width, max, fmt);
-					PopItemWidth();
+					constexpr double min_seek_width = 1e-2;
+					changed |= gui::drag_low_high("nl", seek_low, seek_high, drag_speed, min_seek_width, fmt);
 				},
 				[&] (math::Result& r) {
 					changed |= Drag("Начальная оценка", &initial_guess, drag_speed, min, max, fmt);

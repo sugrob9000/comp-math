@@ -1,6 +1,7 @@
 #include "gauss/gui.hpp"
 #include "gui.hpp"
 #include "imcpp20.hpp"
+#include "integral/int-gui.hpp"
 #include "nonlin-system/nls-gui.hpp"
 #include "nonlin/nl-gui.hpp"
 #include "task.hpp"
@@ -10,7 +11,7 @@
 int main ()
 {
 	gui::init(1280, 760);
-	std::unique_ptr<Task> task(new Nonlinear_system);
+	std::unique_ptr<Task> task(new Integration);
 
 	// Draw at least this many frames at a steady rate after an event
 	constexpr int max_frames_since_event = 2;
@@ -78,6 +79,7 @@ int main ()
 					if (ImGui::Button("Решение нелинейного уравнения")) task.reset(new Nonlinear);
 					if (ImGui::Button("Метод Ньютона для нелинейных систем"))
 						task.reset(new Nonlinear_system);
+					if (ImGui::Button("Численное интегрирование")) task.reset(new Integration);
 				}
 			}
 

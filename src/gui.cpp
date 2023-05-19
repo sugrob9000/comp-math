@@ -1,4 +1,5 @@
 #include "gui.hpp"
+#include "imcpp20.hpp"
 #include "util/util.hpp"
 #include <SDL2/SDL.h>
 #include <fstream>
@@ -6,6 +7,7 @@
 #include <imgui/imgui_impl_sdl2.h>
 #include <imgui/imgui_impl_sdlrenderer.h>
 #include <memory>
+#include <numeric>
 #include <optional>
 
 using Resolution = glm::vec<2, int>;
@@ -169,4 +171,27 @@ void end_frame ()
 	ImGui_ImplSDLRenderer_RenderDrawData(ImGui::GetDrawData());
 	SDL_RenderPresent(global_context->renderer);
 }
+
+bool drag_low_high
+(const char* id, double& low, double& high,
+ float drag_speed, double min_width, const char* fmt)
+{
+	bool result = false;
+
+	constexpr auto min = std::numeric_limits<double>::lowest();
+	constexpr auto max = std::numeric_limits<double>::max();
+
+	ImGui::PushID(id);
+	ImGui::PushItemWidth(ImGui::CalcItemWidth() * 0.5);
+
+	result |= ImGui::Drag("##l", &low, drag_speed, min, high - min_width, fmt);
+
+	ImGui::SameLine();
+	result |= ImGui::Drag("##h", &high, drag_speed, low + min_width, max, fmt);
+
+	ImGui::PopItemWidth();
+	ImGui::PopID();
+	return result;
+}
+
 } // namespace gui

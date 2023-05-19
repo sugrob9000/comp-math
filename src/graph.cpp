@@ -95,6 +95,41 @@ void Graph_draw_context::dot (dvec2 center, uint32_t color)
 	drawlist.AddCircleFilled({ c.x, c.y }, 5.0, color);
 }
 
+void Graph_draw_context::rect
+(dvec2 a, dvec2 b, uint32_t color_border, uint32_t color_fill)
+{
+	const vec2 aa = (world_screen_transform * dvec3(a, 1));
+	const vec2 bb = (world_screen_transform * dvec3(b, 1));
+	if (color_border != 0) drawlist.AddRect({ aa.x, aa.y }, { bb.x, bb.y }, color_border);
+	if (color_fill != 0) drawlist.AddRectFilled({ aa.x, aa.y }, { bb.x, bb.y }, color_fill);
+}
+
+void Graph_draw_context::trapezoid
+(double x1, double x2, double y0, double y1, double y2,
+ uint32_t color_border, uint32_t color_fill)
+{
+	const vec2 xy1 = (world_screen_transform * dvec3(x1, y1, 1));
+	const vec2 xy2 = (world_screen_transform * dvec3(x2, y2, 1));
+	const float yy0 = world_to_screen(1, y0, true);
+	const ImVec2 points[4] = {
+		ImVec2(xy1.x, yy0), ImVec2(xy2.x, yy0),
+		ImVec2(xy2.x, xy2.y), ImVec2(xy1.x, xy1.y)
+	};
+	if (color_border != 0)
+		drawlist.AddPolyline(points, 4, color_border, 0, 2.0);
+	if (color_fill) {
+		if ((y1 > y0) == (y2 > y0)) {
+			drawlist.AddConvexPolyFilled(points, 4, color_fill);
+		} else {
+			const double yy1 = y1 - y0;
+			const double yy2 = y2 - y0;
+
+			const double intercept = 0;
+		}
+	}
+}
+
+
 void Graph_draw_context::background ()
 {
 	const vec3 screen_zero = world_screen_transform * vec3(0, 0, 1);
@@ -149,6 +184,21 @@ void Graph_draw_context::function_plot (uint32_t color, double (*f) (double))
 		const double x = vl.x + i * step;
 		const double y = f(x);
 		vec2 cur = world_screen_transform * vec3(x, y, 1);
+		drawlist.AddLine({ prev.x, prev.y }, { cur.x, cur.y }, color, 3.0f);
+		prev = cur;
+	}
+}
+
+void Graph_draw_context::parametric_plot
+(uint32_t color, dvec2 (*f) (double), double t_low, double t_high)
+{
+	constexpr int num_segments = 100;
+	double step = (t_high - t_low) / num_segments;
+
+	vec2 prev = world_screen_transform * vec3(f(t_low), 1);
+
+	for (int i = 1; i <= num_segments; i++) {
+		vec2 cur = world_screen_transform * vec3(f(t_low + i * step), 1);
 		drawlist.AddLine({ prev.x, prev.y }, { cur.x, cur.y }, color, 3.0f);
 		prev = cur;
 	}
