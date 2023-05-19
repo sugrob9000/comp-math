@@ -1,7 +1,8 @@
 #include "gauss/gui.hpp"
 #include "gui.hpp"
 #include "imcpp20.hpp"
-#include "nonlin/gui.hpp"
+#include "nonlin-system/nls-gui.hpp"
+#include "nonlin/nl-gui.hpp"
 #include "task.hpp"
 #include <chrono>
 #include <thread>
@@ -9,7 +10,7 @@
 int main ()
 {
 	gui::init(1280, 760);
-	std::unique_ptr<Task> task(new Nonlinear);
+	std::unique_ptr<Task> task(new Nonlinear_system);
 
 	// Draw at least this many frames at a steady rate after an event
 	constexpr int max_frames_since_event = 2;
@@ -75,6 +76,8 @@ int main ()
 						ImGuiWindowFlags_AlwaysAutoResize)) {
 					if (ImGui::Button("Метод Гаусса")) task.reset(new Gauss);
 					if (ImGui::Button("Решение нелинейного уравнения")) task.reset(new Nonlinear);
+					if (ImGui::Button("Метод Ньютона для нелинейных систем"))
+						task.reset(new Nonlinear_system);
 				}
 			}
 

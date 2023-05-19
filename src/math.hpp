@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fmt/format.h>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/mat3x3.hpp>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>

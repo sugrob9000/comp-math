@@ -1,6 +1,7 @@
+#include "gui.hpp"
 #include "imcpp20.hpp"
 #include "nonlin/calc.hpp"
-#include "nonlin/gui.hpp"
+#include "nonlin/nl-gui.hpp"
 #include "util/util.hpp"
 #include <cmath>
 #include <utility>
@@ -8,23 +9,13 @@
 using namespace ImGui;
 using namespace ImScoped;
 
-constexpr static ImGuiWindowFlags floating_window_flags
-= ImGuiWindowFlags_AlwaysAutoResize;
-
-constexpr static ImGuiWindowFlags fullscreen_window_flags
-= ImGuiWindowFlags_NoCollapse
-| ImGuiWindowFlags_NoResize
-| ImGuiWindowFlags_NoMove
-| ImGuiWindowFlags_NoSavedSettings
-| ImGuiWindowFlags_NoTitleBar
-| ImGuiWindowFlags_NoBringToFrontOnFocus;
-
+namespace {
 struct Function_spec {
 	const char* name;
 	double (*compute) (double);
 	double (*compute_derivative) (double);
 };
-constexpr static Function_spec functions[] = {
+constexpr Function_spec functions[] = {
 	{
 		"x² - 0.9",
 		[] (double x) { return x*x-0.9; },
@@ -46,7 +37,7 @@ constexpr static Function_spec functions[] = {
 		[] (double x) { return 0.5/sqrt(x + 3); }
 	}
 };
-
+} // anon namespace
 
 void Nonlinear::update_calculation ()
 {
@@ -71,20 +62,15 @@ void Nonlinear::update_calculation ()
 void Nonlinear::gui_frame ()
 {
 	SetNextWindowSizeConstraints({ 300, -1 }, { 1000, -1 });
-	if (auto w = Window("Параметры", nullptr, floating_window_flags))
+	if (auto w = Window("Параметры", nullptr, gui::floating_window_flags))
 		settings_widget();
 	maybe_result_window();
 
-	{ // Draw canvas & functions
-		const ImGuiViewport& viewport = *GetMainViewport();
-		const ImVec2 low = viewport.WorkPos;
-		const ImVec2 size = viewport.WorkSize;
-		const ImVec2 high = { low.x + size.x, low.y + size.y };
-
-		Graph_draw_context context(graph, *GetBackgroundDrawList(), low, high);
-
-		context.draw_background();
-		context.draw_function_plot(0xFF'AA00FF, functions[active_function_id].compute);
+	{ // Draw canvas
+		Graph_draw_context context(graph);
+		context.background();
+		context.function_plot(0xFF'AA00FF, functions[active_function_id].compute);
+		// TODO also visualize results
 	}
 }
 
@@ -185,7 +171,7 @@ void Nonlinear::maybe_result_window () const
 {
 	if (no_chosen_method()) return;
 
-	if (auto w = Window("Результат", nullptr, floating_window_flags)) {
+	if (auto w = Window("Результат", nullptr, gui::floating_window_flags)) {
 		PushTextWrapPos(300);
 		visit_calculation(
 				[&] (const math::Chords_result& r) {

@@ -16,4 +16,17 @@ Event_process_result process_event (const SDL_Event& event);
 
 void begin_frame ();
 void end_frame ();
+
+// =============================== Convenience constants ===============================
+constexpr inline ImGuiWindowFlags floating_window_flags
+= ImGuiWindowFlags_AlwaysAutoResize;
+
+constexpr inline ImGuiWindowFlags fullscreen_window_flags
+= ImGuiWindowFlags_NoCollapse
+| ImGuiWindowFlags_NoResize
+| ImGuiWindowFlags_NoMove
+| ImGuiWindowFlags_NoSavedSettings
+| ImGuiWindowFlags_NoTitleBar
+| ImGuiWindowFlags_NoBringToFrontOnFocus;
+
 } // namespace gui

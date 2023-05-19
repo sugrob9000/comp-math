@@ -2,7 +2,6 @@
 #include "imcpp20.hpp"
 #include "math.hpp"
 #include "util/util.hpp"
-#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/matrix_transform_2d.hpp>
 
 using namespace ImGui;
@@ -42,15 +41,21 @@ static mat3 get_view_to_screen (vec2 low, vec2 size)
 	return glm::scale(translation, size);
 }
 
+
 Graph_draw_context::Graph_draw_context
-(const Graph& graph_, ImDrawList& drawlist_, ImVec2 low_, ImVec2 high_)
+(const Graph& graph_, ImDrawList& drawlist_, ImVec2 low_, ImVec2 size_)
 	: graph{ graph_ }, drawlist{ drawlist_ },
-	low{ low_ }, high{ high_ }, size{ high.x - low.x, high.y - low.y },
+	low{ low_ }, size{ size_ }, high{ low.x + size.x, low.y + size.y },
 	world_screen_transform{
 		get_view_to_screen(vec2(low.x, low.y), vec2(size.x, size.y)) *
 		static_cast<mat3>(graph.get_transform())
 	}
 {}
+
+Graph_draw_context::Graph_draw_context (const Graph& graph_)
+	: Graph_draw_context(graph_, *GetBackgroundDrawList(),
+			GetMainViewport()->WorkPos, GetMainViewport()->WorkSize) {}
+
 
 constexpr static uint32_t color_thick_lines = 0xFF000000;
 constexpr static uint32_t color_thin_lines = 0xFFAAAAAA;
@@ -77,7 +82,20 @@ ImVec2 Graph_draw_context::ortho_line (int coord, double x, uint32_t color, floa
 	return begin;
 }
 
-void Graph_draw_context::draw_background ()
+void Graph_draw_context::line (dvec2 a, dvec2 b, uint32_t color, float thickness)
+{
+	const vec2 aa = (world_screen_transform * dvec3(a, 1));
+	const vec2 bb = (world_screen_transform * dvec3(b, 1));
+	drawlist.AddLine({ aa.x, aa.y }, { bb.x, bb.y }, color, thickness);
+}
+
+void Graph_draw_context::dot (dvec2 center, uint32_t color)
+{
+	const vec2 c = (world_screen_transform * dvec3(center, 1));
+	drawlist.AddCircleFilled({ c.x, c.y }, 5.0, color);
+}
+
+void Graph_draw_context::background ()
 {
 	const vec3 screen_zero = world_screen_transform * vec3(0, 0, 1);
 	const char zero_char[1] = { '0' };
@@ -118,14 +136,14 @@ void Graph_draw_context::draw_background ()
 	}
 }
 
-void Graph_draw_context::draw_function_plot (uint32_t color, double (*f) (double))
+void Graph_draw_context::function_plot (uint32_t color, double (*f) (double))
 {
 	constexpr int num_segments = 100;
 	const dvec2& vl = graph.view_low;
 	const dvec2& vh = graph.view_high;
 	const double step = (vh.x - vl.x) / num_segments;
 
-	vec2 prev = world_screen_transform * vec3(vl.x, f(vl.x), 0);
+	vec2 prev = world_screen_transform * vec3(vl.x, f(vl.x), 1);
 
 	for (int i = 1; i <= num_segments; i++) {
 		const double x = vl.x + i * step;

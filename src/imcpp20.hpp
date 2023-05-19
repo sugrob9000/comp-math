@@ -174,7 +174,7 @@ public:
 		static_assert(Length == sizeof...(Ts));
 		s[0] = s[1] = '#';
 		int i = 2;
-		((s[i++] = 1 + ts % std::numeric_limits<char>::max()), ...);
+		((s[i++] = char(1 + size_t(ts) % std::numeric_limits<char>::max())), ...);
 		s[i] = '\0';
 	}
 	constexpr operator const char* () const { return s; }

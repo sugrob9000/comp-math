@@ -5,9 +5,9 @@
 #include "nonlin/calc.hpp"
 #include "task.hpp"
 #include <variant>
-#include <vector>
 
 // Single non-linear equation solver
+// TODO: the variant-based method choice is really unpleasant, should do something else
 class Nonlinear: public Task {
 	using Calculation = std::variant<
 		std::monostate,
