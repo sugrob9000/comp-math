@@ -18,7 +18,7 @@ struct Result {
 };
 
 struct Line_based_result: Result {
-	struct Line { Dvec2 a, b; };
+	struct Line { dvec2 a, b; };
 	std::vector<Line> lines;
 };
 

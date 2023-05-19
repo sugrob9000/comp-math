@@ -3,7 +3,6 @@
 #include "nonlin/gui.hpp"
 #include "util/util.hpp"
 #include <cmath>
-#include <glm/gtc/type_ptr.hpp>
 #include <utility>
 
 using namespace ImGui;
@@ -49,27 +48,6 @@ constexpr static Function_spec functions[] = {
 };
 
 
-double Nonlinear::view_transform_x (double x) const
-{
-	return (x - view_low.x) / (view_high.x - view_low.x);
-}
-
-double Nonlinear::view_transform_y (double y) const
-{
-	return 1.0 - (y - view_low.y) / (view_high.y - view_low.y);
-}
-
-double Nonlinear::view_transform_i (Coordinate i, double coord) const
-{
-	return i == X ? view_transform_x(coord) : view_transform_y(coord);
-}
-
-math::Dvec2 Nonlinear::view_transform (math::Dvec2 v) const
-{
-	return { view_transform_x(v.x), view_transform_y(v.y) };
-}
-
-
 void Nonlinear::update_calculation ()
 {
 	if (no_chosen_method()) return;
@@ -97,8 +75,17 @@ void Nonlinear::gui_frame ()
 		settings_widget();
 	maybe_result_window();
 
-	update_graph_cache();
-	graph_widget();
+	{ // Draw canvas & functions
+		const ImGuiViewport& viewport = *GetMainViewport();
+		const ImVec2 low = viewport.WorkPos;
+		const ImVec2 size = viewport.WorkSize;
+		const ImVec2 high = { low.x + size.x, low.y + size.y };
+
+		Graph_draw_context context(graph, *GetBackgroundDrawList(), low, high);
+
+		context.draw_background();
+		context.draw_function_plot(0xFF'AA00FF, functions[active_function_id].compute);
+	}
 }
 
 template <typename T> void Nonlinear::method_option_widget (const char* name)
@@ -190,24 +177,8 @@ void Nonlinear::settings_widget ()
 		}
 	}
 
-	if (auto t = ImScoped::TreeNode("Вид")) {
-		const math::Dvec2 center = (view_low + view_high) * 0.5;
-		if (math::Dvec2 delta = center; DragN("Центр", glm::value_ptr(delta), 2, drag_speed)) {
-			delta -= center;
-			view_low += delta;
-			view_high += delta;
-		}
-
-		const math::Dvec2 scale = (view_high - view_low);
-		constexpr double min_scale = 0.5;
-		constexpr double max_scale = 250;
-		if (math::Dvec2 resc = scale;
-				DragN("Масштаб", glm::value_ptr(resc), 2, drag_speed, min_scale, max_scale)) {
-			resc /= scale;
-			view_low = center + (view_low - center) * resc;
-			view_high = center + (view_high - center) * resc;
-		}
-	}
+	if (auto t = ImScoped::TreeNode("Вид"))
+		graph.settings_widget();
 }
 
 void Nonlinear::maybe_result_window () const
@@ -219,7 +190,7 @@ void Nonlinear::maybe_result_window () const
 		visit_calculation(
 				[&] (const math::Chords_result& r) {
 					if (r.has_root) {
-						TextFmt("{} хорд, чтобы достичь точности {}\n",
+						TextFmt("{} хорд, чтобы достичь точности {}\n"
 								"Оценка корня: {:.6}\n"
 								"Значение функции: {:.6}",
 								r.lines.size(), precision,
@@ -251,113 +222,21 @@ void Nonlinear::maybe_result_window () const
 	}
 }
 
-void Nonlinear::update_graph_cache ()
-{
-	if (graph_cache.function_id == active_function_id
-	&& graph_cache.view_low == view_low && graph_cache.view_high == view_high)
-		return;
+/*
+ * TODO: restore the visualization of results
+ */
 
-	const double step = (view_high.x - view_low.x) / std::size(graph_cache.buffer);
-	double x = view_low.x;
-	const auto compute = functions[active_function_id].compute;
-	for (auto& d: graph_cache.buffer) {
-		d = view_transform_y(compute(x));
-		x += step;
-	}
-
-	graph_cache.function_id = active_function_id;
-	graph_cache.view_low = view_low;
-	graph_cache.view_high = view_high;
-}
-
-
-struct Graph_draw_context {
-	const Nonlinear& nl;
-	ImDrawList& dl;
-	ImVec2 pos, end, size;
-
-	constexpr static uint32_t color_thick_lines = 0xFF000000;
-	constexpr static uint32_t color_thin_lines = 0xFFAAAAAA;
-	constexpr static uint32_t color_interval = 0xFFFF0000;
-
-	float screen_transform_x (double x) { x *= size.x; x += pos.x; return x; }
-	float screen_transform_y (double y) { y *= size.y; y += pos.y; return y; }
-	float screen_transform_i (Nonlinear::Coordinate i, double coord) {
-		return i == Nonlinear::X ? screen_transform_x(coord) : screen_transform_y(coord);
-	}
-	math::Fvec2 screen_transform (math::Fvec2 v) {
-		return { screen_transform_x(v.x), screen_transform_y(v.y) };
-	}
-
-	constexpr static int ideal_num_gridlines = 20;
-	constexpr static double gridline_steps[] = {
-		0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 25, 50, 100
-	};
-
-	Graph_draw_context (const Nonlinear& nl_)
-		: nl{nl_}, dl{*GetBackgroundDrawList()},
-		pos{dl.GetClipRectMin()}, end{dl.GetClipRectMax()},
-		size{ end.x - pos.x, end.y - pos.y } {}
-
-	void gridlines_for_coordinate (Nonlinear::Coordinate i) {
-		const double vl = nl.view_low[i];
-		const double vh = nl.view_high[i];
-
-		// Choose the grid step
-		double step = gridline_steps[0];
-		for (double min_step = (vh - vl) / ideal_num_gridlines; auto cand: gridline_steps) {
-			if (min_step <= cand) {
-				step = cand;
-				break;
-			}
-		}
-
-		// Draw the lines and numbers
-		for (double coord = step * std::ceil(vl / step); coord < vh; coord += step) {
-			if (std::abs(coord) < step * 0.5) continue; // Don't duplicate the axes
-			ImVec2 line_begin = pos, line_end = end;
-			line_begin[i] = line_end[i] = screen_transform_i(i, nl.view_transform_i(i, coord));
-			dl.AddLine(line_begin, line_end, color_thin_lines, 1.0);
-			char buf[10];
-			char* buf_end = fmt::format_to_n(buf, std::size(buf), "{:.3}", coord).out;
-			dl.AddText(line_begin, color_thin_lines, buf, buf_end);
-		}
-	}
-
-	void xy_axes () {
-		math::Fvec2 zero = screen_transform(nl.view_transform({ 0, 0 }));
-		dl.AddLine({ zero.x, pos.y }, { zero.x, end.y }, color_thick_lines, 3.0f);
-		dl.AddLine({ pos.x, zero.y }, { end.x, zero.y }, color_thick_lines, 3.0f);
-		const char zero_char[1] = { '0' };
-		dl.AddText({ pos.x, zero.y }, color_thick_lines, zero_char, zero_char+1);
-		dl.AddText({ zero.x + 2, pos.y }, color_thick_lines, zero_char, zero_char+1);
-	}
-
+#if 0
+struct Graph_draw_context2 {
 	void vertical_line (double world_x, uint32_t color) {
 		const float x = screen_transform_x(nl.view_transform_x(world_x));
 		dl.AddLine({ x, pos.y }, { x, end.y }, color, 2.0);
 	}
 
-	void line (math::Dvec2 a, math::Dvec2 b, uint32_t color) {
+	void line (dvec2 a, dvec2 b, uint32_t color) {
 		auto aa = screen_transform(nl.view_transform(a));
 		auto bb = screen_transform(nl.view_transform(b));
 		dl.AddLine({ aa.x, aa.y }, { bb.x, bb.y }, color, 1.5);
-	}
-
-	void function_graph (uint32_t color) {
-		constexpr size_t steps = Nonlinear::Graph_display_cache::resolution;
-		float x = pos.x;
-		const float x_step = size.x / steps;
-		for (size_t i = 1; i < steps; i++, x += x_step) {
-			const float norm_y1 = nl.graph_cache.buffer[i-1];
-			const float norm_y2 = nl.graph_cache.buffer[i];
-			// Skip if both heights is offscreen
-			if ((norm_y1 >= 0 && norm_y1 <= 1) || (norm_y2 >= 0 && norm_y1 <= 1)) {
-				const float y1 = screen_transform_y(norm_y1);
-				const float y2 = screen_transform_y(norm_y2);
-				dl.AddLine({ x, y1 }, { x + x_step, y2 }, color, 3.0f);
-			}
-		}
 	}
 
 	void calculation_result () {
@@ -395,16 +274,4 @@ struct Graph_draw_context {
 				});
 	}
 };
-
-void Nonlinear::graph_widget () const
-{
-	Graph_draw_context g(*this);
-
-	g.gridlines_for_coordinate(X);
-	g.gridlines_for_coordinate(Y);
-	g.xy_axes();
-
-	g.function_graph(0xFF'AA00FF);
-
-	g.calculation_result();
-}
+#endif
