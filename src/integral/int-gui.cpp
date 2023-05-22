@@ -31,6 +31,11 @@ constexpr Function_spec functions[] = {
 		[] (double x) { return exp(-x*x) - 0.5; },
 		[] (double x) { return 0.5 * sqrt(std::numbers::pi) * erf(x); }
 	},
+	{
+		"1/x",
+		[] (double x) { return 1.0 / x; },
+		[] (double x) { return log(x); }
+	}
 };
 
 } // anon namespace
@@ -58,7 +63,7 @@ void Integration::result_visualization () const
 
 	constexpr float limit_thickness = 2.0;
 	const auto f = functions[active_function_id].compute;
-	const double step = (high - low) / subdivisions;
+	const double step = (high - low) / result.subdivisions;
 
 	draw.vert_line(low, limit_color, limit_thickness);
 	draw.vert_line(high, limit_color, limit_thickness);
@@ -73,7 +78,7 @@ void Integration::result_visualization () const
 		case math::Rect_offset::middle: low_sample += step * 0.5; break;
 		case math::Rect_offset::right: low_sample += step; break;
 		}
-		for (unsigned i = 0; i < subdivisions; i++) {
+		for (unsigned i = 0; i < result.subdivisions; i++) {
 			const double x_low = low + step * i;
 			const double x_high = low + step * (i+1);
 			const double x_sample = low_sample + step * i;
@@ -89,7 +94,7 @@ void Integration::result_visualization () const
 		draw.dot({ low, f(low) }, dot_color);
 		dvec2 prev = { low, f(low) };
 
-		for (unsigned i = 0; i < subdivisions; i++) {
+		for (unsigned i = 0; i < result.subdivisions; i++) {
 			dvec2 cur;
 			cur.x = low + step * i;
 
@@ -104,11 +109,8 @@ void Integration::result_visualization () const
 	}
 
 	case Method::simpson: {
-		unsigned n = subdivisions;
-		if (n % 2 == 1) n++;
-		const double step_corrected = (high - low) / n;
-		for (unsigned i = 0; i <= n; i++) {
-			const double x = low + step_corrected * i;
+		for (unsigned i = 0; i <= result.subdivisions; i++) {
+			const double x = low + step * i;
 			draw.dot({ x, f(x) }, dot_color);
 		}
 		break;
@@ -164,31 +166,8 @@ void Integration::settings_widget ()
 	constexpr double min_width = 1e-2;
 	query_changed |= DragMinMax("bounds", &low, &high, drag_speed, 1e-2);
 
-	TextUnformatted("Точность");
-
-	if (RadioButton("Погрешность", precision_spec == Precision_spec::by_precision)) {
-		precision_spec = Precision_spec::by_precision;
-		query_changed = true;
-	}
-	SameLine();
-
-	const auto drag = [&] <ScalarType T>
-		(const char* id, T* p, T min, T max, float speed, Precision_spec precision_spec_required) {
-			BeginDisabled(precision_spec != precision_spec_required);
-			query_changed |= Drag(id, p, speed, min, max, nullptr, ImGuiSliderFlags_AlwaysClamp);
-			EndDisabled();
-		};
-
-	drag("##prec", &precision, min_precision, max_precision,
-			1e-4, Precision_spec::by_precision);
-
-	if (RadioButton("Подинтервалы", precision_spec == Precision_spec::by_num_subdivisions)) {
-		precision_spec = Precision_spec::by_num_subdivisions;
-		query_changed = true;
-	}
-	SameLine();
-	drag("##subdiv", &subdivisions, min_subdivisions, max_subdivisions,
-			drag_speed_fast, Precision_spec::by_num_subdivisions);
+	query_changed |= Drag("Погрешность", &precision, 1e-4,
+			min_precision, max_precision, nullptr, ImGuiSliderFlags_AlwaysClamp);
 
 	TextUnformatted("Вид");
 	graph.settings_widget();
@@ -200,23 +179,25 @@ void Integration::settings_widget ()
 void Integration::result_window () const
 {
 	if (auto w = Window("Результат", nullptr, gui::floating_window_flags)) {
-		TextFmt("Значение интеграла: {:.6}\n(Точное значение: {:.6})\n",
-				calculated_result, exact_result);
-		if (precision_spec == Precision_spec::by_precision)
-			TextFmt("{} интервалов для погрешности {}", subdivisions, precision);
+		if (result.diverges) {
+			TextFmt("Похоже, интеграл расходится на интервале ({}, {})", low, high);
+		} else {
+			TextFmt(
+					"Значение интеграла: {:.6}\n"
+					"(Точное значение: {:.6})\n"
+					"{} интервалов для погрешности {}",
+					result.calculated, result.exact, result.subdivisions, precision);
+		}
 	}
 }
 
-double Integration::integrate_once_with_current_settings () const
+double Integration::integrate_once (unsigned subdivisions) const
 {
-	const Function_spec& f = functions[active_function_id];
+	const auto& f = functions[active_function_id].compute;
 	switch (active_method) {
-	case Method::rect:
-		return math::integrate_rect(f.compute, low, high, subdivisions, rect_offset);
-	case Method::trapezoid:
-		return math::integrate_trapezoids(f.compute, low, high, subdivisions);
-	case Method::simpson:
-		return math::integrate_simpson(f.compute, low, high, subdivisions);
+	case Method::rect: return math::integrate_rect(f, low, high, subdivisions, rect_offset);
+	case Method::trapezoid: return math::integrate_trapezoids(f, low, high, subdivisions);
+	case Method::simpson: return math::integrate_simpson(f, low, high, subdivisions);
 	}
 	unreachable();
 }
@@ -225,30 +206,42 @@ double Integration::integrate_once_with_current_settings () const
 void Integration::update_calculation ()
 {
 	const Function_spec& f = functions[active_function_id];
-	exact_result = f.antiderivative(high) - f.antiderivative(low);
+	const double exact_result = f.antiderivative(high) - f.antiderivative(low);
 
 	precision = std::clamp(precision, min_precision, max_precision);
-	subdivisions = std::clamp(subdivisions, min_subdivisions, max_subdivisions);
 
-	switch (precision_spec) {
-		using enum Precision_spec;
-	case by_precision: {
-		subdivisions = min_subdivisions;
-		double last_result = integrate_once_with_current_settings();
-		constexpr static int method_precision_orders[3] = { 3, 3, 15 };
-		const double factor = 1.0 / method_precision_orders[static_cast<int>(active_method)];
-		do {
-			subdivisions *= 2;
-			calculated_result = integrate_once_with_current_settings();
-			const double diff = std::abs(calculated_result - last_result) * factor;
-			last_result = calculated_result;
-			if (diff < precision)
-				break;
-		} while (subdivisions < max_subdivisions);
-		break;
-	}
-	case by_num_subdivisions:
-		calculated_result = integrate_once_with_current_settings();
-		break;
-	}
+	const double factor = [&] {
+		switch (active_method) {
+		case Method::rect: return rect_offset == math::Rect_offset::middle ? 1.0 / 3 : 1.0;
+		case Method::trapezoid: return 1.0 / 3;
+		case Method::simpson: return 1.0 / 15;
+		}
+		unreachable();
+	} ();
+
+	unsigned subdivisions = min_subdivisions;
+	double last_result = integrate_once(subdivisions);
+	double last_diff = std::numeric_limits<double>::max();
+	bool diverges = false;
+
+	do {
+		subdivisions *= 2;
+		const double cur_result = integrate_once(subdivisions);
+		const double diff = std::abs(cur_result - last_result) * factor;
+		last_result = cur_result;
+
+		if (std::exchange(last_diff, diff) < diff) {
+			diverges = true;
+			break;
+		}
+		if (diff < precision)
+			break;
+	} while (subdivisions < max_subdivisions);
+
+	result = {
+		.calculated = last_result,
+		.exact = f.antiderivative(high) - f.antiderivative(low),
+		.diverges = diverges,
+		.subdivisions = subdivisions
+	};
 }

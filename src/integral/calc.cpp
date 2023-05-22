@@ -6,51 +6,42 @@ namespace math {
 double integrate_rect
 (double (*f) (double), double low, double high, unsigned n, Rect_offset offset)
 {
-	double result = 0;
 	const double step = (high - low) / n;
-
 	switch (offset) {
 	case Rect_offset::left: break;
 	case Rect_offset::middle: low += step * 0.5; break;
 	case Rect_offset::right: low += step; break;
 	}
-
+	double acc = 0;
 	for (unsigned i = 0; i < n; i++)
-		result += step * f(low + i * step);
-
-	return result;
+		acc += f(low + i * step);
+	return acc * step;
 }
 
 double integrate_trapezoids (double (*f) (double), double low, double high, unsigned n)
 {
-	double result = 0;
 	const double step = (high - low) / n;
 
 	dvec2 prev = { low, f(low) };
-
+	double acc = 0;
 	for (unsigned i = 1; i <= n; i++) {
-		dvec2 cur;
-		cur.x = low + step * i;
-		cur.y = f(cur.x);
-		result += step * (cur.y + prev.y);
+		const double x = low + step * i;
+		const dvec2 cur = { x, f(x) };
+		acc += cur.y + prev.y;
 		prev = cur;
 	}
-
-	result *= 0.5;
-
-	return result;
+	return acc * 0.5 * step;
 }
 
 double integrate_simpson (double (*f) (double), double low, double high, unsigned n)
 {
-	if (n % 2 != 0)
-		n++;
 	const double step = (high - low) / n;
 	const double edges = f(low) + f(high);
 	double odd = 0, even = 0;
-	for (unsigned i = 0; i < n/2; i++) odd += f(low + step * (2 * i + 1));
-	for (unsigned i = 1; i < n/2; i++) even += f(low + step * (2 * i));
+	for (unsigned i = 0; 2*i+1 < n; i++)
+		odd += f(low + step * (2 * i + 1));
+	for (unsigned i = 1; 2*i < n; i++)
+		even += f(low + step * (2 * i));
 	return (edges + 4*odd + 2*even) * step / 3;
 }
-
 } // namespace math

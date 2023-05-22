@@ -11,21 +11,21 @@ class Integration: public Task {
 	Method active_method = Method::rect;
 	math::Rect_offset rect_offset = math::Rect_offset::middle;
 
-	double calculated_result;
-	double exact_result;
-
+	constexpr static double min_precision = 1e-6, max_precision = 1e-1;
+	double precision = 0.01;
 	double low = -0.5, high = 1.3;
 
-	constexpr static unsigned min_subdivisions = 1 << 2, max_subdivisions = 1 << 10;
-	constexpr static double min_precision = 1e-6, max_precision = 1e-1;
-
-	enum class Precision_spec { by_precision, by_num_subdivisions };
-	Precision_spec precision_spec = Precision_spec::by_precision;
-	unsigned subdivisions = min_subdivisions;
-	double precision = 0.01;
+	constexpr static unsigned min_subdivisions = 2, max_subdivisions = 1 << 10;
+	struct Result {
+		double calculated = 0.0;
+		double exact = 0.0;
+		bool diverges = false;
+		unsigned subdivisions = min_subdivisions;
+	};
+	Result result;
 
 	void update_calculation ();
-	double integrate_once_with_current_settings () const;
+	double integrate_once (unsigned subdivisions) const;
 
 	Graph graph;
 

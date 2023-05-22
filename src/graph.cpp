@@ -125,8 +125,8 @@ void Graph_draw_context::trapezoid
 			const double yy2 = xy2.y - yy0;
 			const float x_intercept = yy1 * (xy1.x - xy2.x) / (xy2.y - xy1.y) + xy1.x;
 			const ImVec2 middle = { x_intercept, yy0 };
-			drawlist.AddTriangleFilled(middle, points[0], points[3], color_fill);
-			drawlist.AddTriangleFilled(middle, points[1], points[2], color_fill);
+			drawlist.AddTriangleFilled(middle, points[3], points[0], color_fill);
+			drawlist.AddTriangleFilled(middle, points[2], points[1], color_fill);
 		}
 	}
 }

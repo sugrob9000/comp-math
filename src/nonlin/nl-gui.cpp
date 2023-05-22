@@ -111,8 +111,8 @@ void Nonlinear::settings_widget ()
 		method_option_widget<math::Newton_result>("Ньютона");
 		method_option_widget<math::Iteration_result>("Простой итерации");
 
-		constexpr auto min = std::numeric_limits<double>::lowest();
-		constexpr auto max = std::numeric_limits<double>::max();
+		constexpr auto min = -std::numeric_limits<double>::infinity();
+		constexpr auto max = std::numeric_limits<double>::infinity();
 		bool changed = false;
 
 		if (chosen_method_is<math::Iteration_result>()) {
