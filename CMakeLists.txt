@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.17)
-project(task1 LANGUAGES C CXX)
+project(comp LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -9,8 +9,7 @@ set(exec solver)
 
 find_package(glm REQUIRED)
 find_package(SDL2 REQUIRED)
-find_package(GLEW REQUIRED)
-find_package(OpenGL REQUIRED)
+find_package(fmt CONFIG REQUIRED)
 
 add_subdirectory(${libsrc-dir})
 
@@ -24,7 +23,7 @@ target_include_directories(${exec} PRIVATE ${src-dir})
 target_include_directories(${exec} SYSTEM PRIVATE ${libsrc-dir})
 
 target_link_libraries(${exec}
-	fmt imgui
+	fmt::fmt imgui glm::glm
 	${SDL2_LIBRARIES}
 	${OPENGL_LIBRARIES}
 	${GLEW_LIBRARIES})
