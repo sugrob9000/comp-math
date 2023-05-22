@@ -160,12 +160,12 @@ bool InputNumberN (const char* l, T* p, int n, T step = 0, T step_fast = 0, cons
 	return InputScalar(l, DataTypeEnum<T>, p, n, (step == 0 ? nullptr : &step), (step_fast == 0 ? nullptr : &step_fast), fmt, flags);
 }
 
-// ===================================== DragMinMax =====================================
+
 // Drag two values such that `low <= high - min_diff`
 template <ScalarType T>
 bool DragMinMax (const char* id, T* low, T* high, float speed, T min_diff = 0, T min = std::numeric_limits<T>::lowest(), T max = std::numeric_limits<T>::max(), const char* fmt = nullptr, ImGuiSliderFlags = 0)
 {
-	bool result = true;
+	bool result = false;
 	PushID(id);
 	PushItemWidth(CalcItemWidth() * 0.5);
 	result |= Drag("##l", low, speed, min, *high - min_diff, fmt);

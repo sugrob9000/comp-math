@@ -4,6 +4,7 @@
 #include "integral/int-gui.hpp"
 #include "util/util.hpp"
 #include <algorithm>
+#include <numbers>
 
 using namespace ImGui;
 using namespace ImScoped;
@@ -28,7 +29,7 @@ constexpr Function_spec functions[] = {
 	{
 		"exp(-x²) - 0.5",
 		[] (double x) { return exp(-x*x) - 0.5; },
-		[] (double x) { return 0.5 * sqrt(M_PI) * erf(x); }
+		[] (double x) { return 0.5 * sqrt(std::numbers::pi) * erf(x); }
 	},
 };
 
@@ -62,7 +63,7 @@ void Integration::result_visualization () const
 	draw.vert_line(low, limit_color, limit_thickness);
 	draw.vert_line(high, limit_color, limit_thickness);
 
-	// TODO: output the required information in `math::integrate_*`
+	// TODO: output the required information from special `math::` functions
 	// instead of replicating most of the computation here
 	switch (active_method) {
 	case Method::rect: {
@@ -82,10 +83,16 @@ void Integration::result_visualization () const
 		}
 		break;
 	}
-	case Method::trapezoid:
+
+	case Method::trapezoid: {
 		// TODO: use the `prev` idiom
 		draw.dot({ low, f(low) }, dot_color);
+		dvec2 prev = { low, f(low) };
+
 		for (unsigned i = 0; i < subdivisions; i++) {
+			dvec2 cur;
+			cur.x = low + step * i;
+
 			const double x1 = low + step * i;
 			const double x2 = low + step * (i+1);
 			const double y1 = f(x1);
@@ -94,8 +101,18 @@ void Integration::result_visualization () const
 			draw.dot({ x2, y2 }, dot_color);
 		}
 		break;
+	}
 
-	case Method::simpson: break; // no visualization
+	case Method::simpson: {
+		unsigned n = subdivisions;
+		if (n % 2 == 1) n++;
+		const double step_corrected = (high - low) / n;
+		for (unsigned i = 0; i <= n; i++) {
+			const double x = low + step_corrected * i;
+			draw.dot({ x, f(x) }, dot_color);
+		}
+		break;
+	}
 	}
 }
 
@@ -155,18 +172,23 @@ void Integration::settings_widget ()
 	}
 	SameLine();
 
-	BeginDisabled(precision_spec != Precision_spec::by_precision);
-	query_changed |= Drag("##prec", &precision, 1e-5,
-			min_precision, max_precision, nullptr, ImGuiSliderFlags_AlwaysClamp);
-	EndDisabled();
+	const auto drag = [&] <ScalarType T>
+		(const char* id, T* p, T min, T max, float speed, Precision_spec precision_spec_required) {
+			BeginDisabled(precision_spec != precision_spec_required);
+			query_changed |= Drag(id, p, speed, min, max, nullptr, ImGuiSliderFlags_AlwaysClamp);
+			EndDisabled();
+		};
+
+	drag("##prec", &precision, min_precision, max_precision,
+			1e-4, Precision_spec::by_precision);
 
 	if (RadioButton("Подинтервалы", precision_spec == Precision_spec::by_num_subdivisions)) {
 		precision_spec = Precision_spec::by_num_subdivisions;
 		query_changed = true;
 	}
 	SameLine();
-	query_changed |= Drag("##subdiv", &subdivisions, drag_speed_fast,
-			min_subdivisions, max_subdivisions, nullptr, ImGuiSliderFlags_AlwaysClamp);
+	drag("##subdiv", &subdivisions, min_subdivisions, max_subdivisions,
+			drag_speed_fast, Precision_spec::by_num_subdivisions);
 
 	TextUnformatted("Вид");
 	graph.settings_widget();
@@ -213,7 +235,7 @@ void Integration::update_calculation ()
 	case by_precision: {
 		subdivisions = min_subdivisions;
 		double last_result = integrate_once_with_current_settings();
-		constexpr static int method_precision_orders[3] = { 2, 2, 4 };
+		constexpr static int method_precision_orders[3] = { 3, 3, 15 };
 		const double factor = 1.0 / method_precision_orders[static_cast<int>(active_method)];
 		do {
 			subdivisions *= 2;

@@ -1,4 +1,5 @@
 #include "integral/calc.hpp"
+#include "util/util.hpp"
 
 namespace math {
 
@@ -45,12 +46,11 @@ double integrate_simpson (double (*f) (double), double low, double high, unsigne
 	if (n % 2 != 0)
 		n++;
 	const double step = (high - low) / n;
-	double acc = f(low) + f(high);
-	for (unsigned i = 0; i < n/2; i++) {
-		acc += 4 * f(low + step * (2 * i + 1));
-		acc += 2 * f(low + step * (2 * i + 2));
-	}
-	return acc * step / 3;
+	const double edges = f(low) + f(high);
+	double odd = 0, even = 0;
+	for (unsigned i = 0; i < n/2; i++) odd += f(low + step * (2 * i + 1));
+	for (unsigned i = 1; i < n/2; i++) even += f(low + step * (2 * i));
+	return (edges + 4*odd + 2*even) * step / 3;
 }
 
 } // namespace math
