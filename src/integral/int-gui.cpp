@@ -2,6 +2,8 @@
 #include "imcpp20.hpp"
 #include "integral/calc.hpp"
 #include "integral/int-gui.hpp"
+#include "util/util.hpp"
+#include <algorithm>
 
 using namespace ImGui;
 using namespace ImScoped;
@@ -29,6 +31,7 @@ constexpr Function_spec functions[] = {
 		[] (double x) { return 0.5 * sqrt(M_PI) * erf(x); }
 	},
 };
+
 } // anon namespace
 
 void Integration::gui_frame ()
@@ -38,62 +41,69 @@ void Integration::gui_frame ()
 		settings_widget();
 
 	result_window();
+	result_visualization();
+}
 
+void Integration::result_visualization () const
+{
 	Graph_draw_context draw(graph);
 	draw.background();
 	draw.function_plot(0xFF'55BB77, functions[active_function_id].compute);
 
-	{
-		constexpr uint32_t limit_color = 0xFF'BB5555;
-		constexpr uint32_t outline_color = 0x88'CC0044;
-		constexpr uint32_t fill_color = 0x22'C01054;
-		constexpr uint32_t dot_color = fill_color | 0xFF'000000;
+	constexpr uint32_t limit_color = 0xFF'BB5555;
+	constexpr uint32_t outline_color = 0x88'CC0044;
+	constexpr uint32_t fill_color = 0x22'C01054;
+	constexpr uint32_t dot_color = fill_color | 0xFF'000000;
 
-		constexpr float limit_thickness = 2.0;
-		const double step = (high - low) / subdivisions;
-		const auto f = functions[active_function_id].compute;
+	constexpr float limit_thickness = 2.0;
+	const auto f = functions[active_function_id].compute;
+	const double step = (high - low) / subdivisions;
 
-		draw.vert_line(low, limit_color, limit_thickness);
-		draw.vert_line(high, limit_color, limit_thickness);
+	draw.vert_line(low, limit_color, limit_thickness);
+	draw.vert_line(high, limit_color, limit_thickness);
 
-		switch (active_method) {
-		case Method::rect: {
-			double low_sample = low;
-			switch (rect_offset) {
-			case math::Rect_offset::left: break;
-			case math::Rect_offset::middle: low_sample += step * 0.5; break;
-			case math::Rect_offset::right: low_sample += step; break;
-			}
-			for (unsigned i = 0; i < subdivisions; i++) {
-				const double x_low = low + step * i;
-				const double x_high = low + step * (i+1);
-				const double x_sample = low_sample + step * i;
-				const double y = f(x_sample);
-				draw.rect({ x_low, 0 }, { x_high, y }, outline_color, fill_color);
-				draw.dot({ x_sample, y }, dot_color);
-			}
-			break;
+	// TODO: output the required information in `math::integrate_*`
+	// instead of replicating most of the computation here
+	switch (active_method) {
+	case Method::rect: {
+		double low_sample = low;
+		switch (rect_offset) {
+		case math::Rect_offset::left: break;
+		case math::Rect_offset::middle: low_sample += step * 0.5; break;
+		case math::Rect_offset::right: low_sample += step; break;
 		}
-		case Method::trapezoid:
-			// TODO: use the `prev` idiom
-			draw.dot({ low, f(low) }, dot_color);
-			for (unsigned i = 0; i < subdivisions; i++) {
-				const double x1 = low + step * i;
-				const double x2 = low + step * (i+1);
-				const double y1 = f(x1);
-				const double y2 = f(x2);
-				draw.trapezoid(x1, x2, 0, y1, y2, outline_color, fill_color);
-				draw.dot({ x2, y2 }, dot_color);
-			}
-			break;
-		case Method::simpson:
-			break;
+		for (unsigned i = 0; i < subdivisions; i++) {
+			const double x_low = low + step * i;
+			const double x_high = low + step * (i+1);
+			const double x_sample = low_sample + step * i;
+			const double y = f(x_sample);
+			draw.rect({ x_low, 0 }, { x_high, y }, outline_color, fill_color);
+			draw.dot({ x_sample, y }, dot_color);
 		}
+		break;
+	}
+	case Method::trapezoid:
+		// TODO: use the `prev` idiom
+		draw.dot({ low, f(low) }, dot_color);
+		for (unsigned i = 0; i < subdivisions; i++) {
+			const double x1 = low + step * i;
+			const double x2 = low + step * (i+1);
+			const double y1 = f(x1);
+			const double y2 = f(x2);
+			draw.trapezoid(x1, x2, 0, y1, y2, outline_color, fill_color);
+			draw.dot({ x2, y2 }, dot_color);
+		}
+		break;
+
+	case Method::simpson: break; // no visualization
 	}
 }
 
 void Integration::settings_widget ()
 {
+	constexpr float drag_speed = 0.03;
+	constexpr float drag_speed_fast = 0.1;
+
 	bool query_changed = false;
 
 	if (auto node = ImScoped::TreeNode("Метод")) {
@@ -134,10 +144,29 @@ void Integration::settings_widget ()
 	}
 
 	TextUnformatted("Область интегрирования");
-	constexpr float drag_speed = 0.03;
 	constexpr double min_width = 1e-2;
-	query_changed |= gui::drag_low_high("integral", low, high, 0.03, 1e-2, "%.2f");
-	query_changed |= Drag("Подинтервалы", &subdivisions, 0.1, 3u, 1'000'000u);
+	query_changed |= DragMinMax("bounds", &low, &high, drag_speed, 1e-2);
+
+	TextUnformatted("Точность");
+
+	if (RadioButton("Погрешность", precision_spec == Precision_spec::by_precision)) {
+		precision_spec = Precision_spec::by_precision;
+		query_changed = true;
+	}
+	SameLine();
+
+	BeginDisabled(precision_spec != Precision_spec::by_precision);
+	query_changed |= Drag("##prec", &precision, 1e-5,
+			min_precision, max_precision, nullptr, ImGuiSliderFlags_AlwaysClamp);
+	EndDisabled();
+
+	if (RadioButton("Подинтервалы", precision_spec == Precision_spec::by_num_subdivisions)) {
+		precision_spec = Precision_spec::by_num_subdivisions;
+		query_changed = true;
+	}
+	SameLine();
+	query_changed |= Drag("##subdiv", &subdivisions, drag_speed_fast,
+			min_subdivisions, max_subdivisions, nullptr, ImGuiSliderFlags_AlwaysClamp);
 
 	TextUnformatted("Вид");
 	graph.settings_widget();
@@ -149,24 +178,55 @@ void Integration::settings_widget ()
 void Integration::result_window () const
 {
 	if (auto w = Window("Результат", nullptr, gui::floating_window_flags)) {
-		TextFmt("Значение интеграла: {:.6}", result.value);
-		TextFmt("Точное значение: {:.6}", exact_result);
+		TextFmt("Значение интеграла: {:.6}\n(Точное значение: {:.6})\n",
+				calculated_result, exact_result);
+		if (precision_spec == Precision_spec::by_precision)
+			TextFmt("{} интервалов для погрешности {}", subdivisions, precision);
 	}
 }
+
+double Integration::integrate_once_with_current_settings () const
+{
+	const Function_spec& f = functions[active_function_id];
+	switch (active_method) {
+	case Method::rect:
+		return math::integrate_rect(f.compute, low, high, subdivisions, rect_offset);
+	case Method::trapezoid:
+		return math::integrate_trapezoids(f.compute, low, high, subdivisions);
+	case Method::simpson:
+		return math::integrate_simpson(f.compute, low, high, subdivisions);
+	}
+	unreachable();
+}
+
 
 void Integration::update_calculation ()
 {
 	const Function_spec& f = functions[active_function_id];
-
 	exact_result = f.antiderivative(high) - f.antiderivative(low);
 
-	switch (active_method) {
-	case Method::rect:
-		result = math::integrate_rect(f.compute, low, high, subdivisions, rect_offset);
+	precision = std::clamp(precision, min_precision, max_precision);
+	subdivisions = std::clamp(subdivisions, min_subdivisions, max_subdivisions);
+
+	switch (precision_spec) {
+		using enum Precision_spec;
+	case by_precision: {
+		subdivisions = min_subdivisions;
+		double last_result = integrate_once_with_current_settings();
+		constexpr static int method_precision_orders[3] = { 2, 2, 4 };
+		const double factor = 1.0 / method_precision_orders[static_cast<int>(active_method)];
+		do {
+			subdivisions *= 2;
+			calculated_result = integrate_once_with_current_settings();
+			const double diff = std::abs(calculated_result - last_result) * factor;
+			last_result = calculated_result;
+			if (diff < precision)
+				break;
+		} while (subdivisions < max_subdivisions);
 		break;
-	case Method::trapezoid:
-		result = math::integrate_trapezoids(f.compute, low, high, subdivisions);
+	}
+	case by_num_subdivisions:
+		calculated_result = integrate_once_with_current_settings();
 		break;
-	case Method::simpson: break;
 	}
 }

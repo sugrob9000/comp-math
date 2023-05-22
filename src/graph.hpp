@@ -2,6 +2,8 @@
 
 #include "imcpp20.hpp"
 #include "math.hpp"
+#include <functional>
+#include <numeric>
 
 class Graph {
 	dvec2 view_low { -2, -2 };
@@ -32,7 +34,12 @@ public:
 	Graph_draw_context (const Graph&, ImDrawList&, ImVec2 low, ImVec2 size);
 
 	void background ();
-	void function_plot (uint32_t color, double (*) (double));
+
+	void function_plot
+		(uint32_t color, const std::function<double(double)>&,
+		 double low = std::numeric_limits<double>::lowest(),
+		 double high = std::numeric_limits<double>::max(), unsigned n = 100);
+
 	void parametric_plot (uint32_t color, dvec2 (*) (double t), double t_low, double t_high);
 
 	// Returns the top or left point of the line, in pixel coordinates
@@ -44,6 +51,7 @@ public:
 	void dot (dvec2, uint32_t color);
 
 	void rect (dvec2 a, dvec2 b, uint32_t color_border, uint32_t color_fill);
-	void trapezoid (double x1, double x2, double y0, double y1, double y2,
-			uint32_t color_border, uint32_t color_fill);
+	void trapezoid
+		(double x1, double x2, double y0, double y1, double y2,
+		 uint32_t color_border, uint32_t color_fill);
 };

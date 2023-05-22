@@ -127,15 +127,14 @@ void Nonlinear::settings_widget ()
 		}
 
 		// Input interval when using chords, just one initial guess otherwise
-		const char* fmt = "%.2f";
 		visit_calculation(
 				[&] (math::Chords_result& r) {
 					TextUnformatted("Интервал изоляции корня");
 					constexpr double min_seek_width = 1e-2;
-					changed |= gui::drag_low_high("nl", seek_low, seek_high, drag_speed, min_seek_width, fmt);
+					changed |= DragMinMax("nl", &seek_low, &seek_high, drag_speed, min_seek_width);
 				},
 				[&] (math::Result& r) {
-					changed |= Drag("Начальная оценка", &initial_guess, drag_speed, min, max, fmt);
+					changed |= Drag("Начальная оценка", &initial_guess, drag_speed, min, max);
 				});
 
 		if (!no_chosen_method()) {

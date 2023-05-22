@@ -102,7 +102,7 @@ void Nonlinear_system::settings_widget ()
 	bool query_changed = false;
 
 	TextUnformatted("Функции");
-	if (auto table = ImScoped::Table("func", 3)) {
+	if (auto table = Table("func", 3)) {
 		for (unsigned func_id = 0; func_id < std::size(functions); func_id++) {
 			TableNextRow();
 			TableNextColumn();

@@ -27,9 +27,4 @@ constexpr inline ImGuiWindowFlags fullscreen_window_flags
 | ImGuiWindowFlags_NoTitleBar
 | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
-// Drag `low` and `high` such that `low` + `min_width` < `high`
-bool drag_low_high
-(const char* id, double& low, double& high,
- float drag_speed, double min_width, const char* fmt);
-
 } // namespace gui

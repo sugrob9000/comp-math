@@ -1,3 +1,4 @@
+#include "approx/ap-gui.hpp"
 #include "gauss/gui.hpp"
 #include "gui.hpp"
 #include "imcpp20.hpp"
@@ -80,6 +81,7 @@ int main ()
 					if (ImGui::Button("Метод Ньютона для нелинейных систем"))
 						task.reset(new Nonlinear_system);
 					if (ImGui::Button("Численное интегрирование")) task.reset(new Integration);
+					if (ImGui::Button("Аппроксимация")) task.reset(new Approx);
 				}
 			}
 

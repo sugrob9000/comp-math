@@ -2,10 +2,10 @@
 
 namespace math {
 
-Integration_result integrate_rect
+double integrate_rect
 (double (*f) (double), double low, double high, unsigned n, Rect_offset offset)
 {
-	Integration_result result;
+	double result = 0;
 	const double step = (high - low) / n;
 
 	switch (offset) {
@@ -15,15 +15,14 @@ Integration_result integrate_rect
 	}
 
 	for (unsigned i = 0; i < n; i++)
-		result.value += step * f(low + i * step);
+		result += step * f(low + i * step);
 
 	return result;
 }
 
-Integration_result integrate_trapezoids
-(double (*f) (double), double low, double high, unsigned n)
+double integrate_trapezoids (double (*f) (double), double low, double high, unsigned n)
 {
-	Integration_result result;
+	double result = 0;
 	const double step = (high - low) / n;
 
 	dvec2 prev = { low, f(low) };
@@ -32,13 +31,26 @@ Integration_result integrate_trapezoids
 		dvec2 cur;
 		cur.x = low + step * i;
 		cur.y = f(cur.x);
-		result.value += step * (cur.y + prev.y);
+		result += step * (cur.y + prev.y);
 		prev = cur;
 	}
 
-	result.value *= 0.5;
+	result *= 0.5;
 
 	return result;
+}
+
+double integrate_simpson (double (*f) (double), double low, double high, unsigned n)
+{
+	if (n % 2 != 0)
+		n++;
+	const double step = (high - low) / n;
+	double acc = f(low) + f(high);
+	for (unsigned i = 0; i < n/2; i++) {
+		acc += 4 * f(low + step * (2 * i + 1));
+		acc += 2 * f(low + step * (2 * i + 2));
+	}
+	return acc * step / 3;
 }
 
 } // namespace math

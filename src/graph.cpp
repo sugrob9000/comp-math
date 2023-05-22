@@ -116,15 +116,17 @@ void Graph_draw_context::trapezoid
 		ImVec2(xy2.x, xy2.y), ImVec2(xy1.x, xy1.y)
 	};
 	if (color_border != 0)
-		drawlist.AddPolyline(points, 4, color_border, 0, 2.0);
+		drawlist.AddPolyline(points, std::size(points), color_border, 0, 2.0);
 	if (color_fill) {
 		if ((y1 > y0) == (y2 > y0)) {
 			drawlist.AddConvexPolyFilled(points, 4, color_fill);
 		} else {
-			const double yy1 = y1 - y0;
-			const double yy2 = y2 - y0;
-
-			const double intercept = 0;
+			const double yy1 = xy1.y - yy0;
+			const double yy2 = xy2.y - yy0;
+			const float x_intercept = yy1 * (xy1.x - xy2.x) / (xy2.y - xy1.y) + xy1.x;
+			const ImVec2 middle = { x_intercept, yy0 };
+			drawlist.AddTriangleFilled(middle, points[0], points[3], color_fill);
+			drawlist.AddTriangleFilled(middle, points[1], points[2], color_fill);
 		}
 	}
 }
@@ -171,19 +173,19 @@ void Graph_draw_context::background ()
 	}
 }
 
-void Graph_draw_context::function_plot (uint32_t color, double (*f) (double))
+void Graph_draw_context::function_plot
+(uint32_t color, const std::function<double(double)>& f, double l, double h, unsigned n)
 {
-	constexpr int num_segments = 100;
-	const dvec2& vl = graph.view_low;
-	const dvec2& vh = graph.view_high;
-	const double step = (vh.x - vl.x) / num_segments;
+	l = std::max(l, graph.view_low.x);
+	h = std::min(h, graph.view_high.x);
 
-	vec2 prev = world_screen_transform * vec3(vl.x, f(vl.x), 1);
+	vec2 prev = world_screen_transform * vec3(l, f(l), 1);
 
-	for (int i = 1; i <= num_segments; i++) {
-		const double x = vl.x + i * step;
+	const double step = (h - l) / n;
+	for (unsigned i = 1; i <= n; i++) {
+		const double x = l + i * step;
 		const double y = f(x);
-		vec2 cur = world_screen_transform * vec3(x, y, 1);
+		const vec2 cur = world_screen_transform * vec3(x, y, 1);
 		drawlist.AddLine({ prev.x, prev.y }, { cur.x, cur.y }, color, 3.0f);
 		prev = cur;
 	}
