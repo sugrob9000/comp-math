@@ -1,5 +1,5 @@
 #include "gui.hpp"
-#include "imcpp20.hpp"
+#include "imhelper.hpp"
 #include "nonlin/calc.hpp"
 #include "nonlin/nl-gui.hpp"
 #include "util/util.hpp"
@@ -128,12 +128,12 @@ void Nonlinear::settings_widget ()
 
 		// Input interval when using chords, just one initial guess otherwise
 		visit_calculation(
-				[&] (math::Chords_result& r) {
+				[&] ([[maybe_unused]] math::Chords_result& r) {
 					TextUnformatted("Интервал изоляции корня");
 					constexpr double min_seek_width = 1e-2;
 					changed |= DragMinMax("nl", &seek_low, &seek_high, drag_speed, min_seek_width);
 				},
-				[&] (math::Result& r) {
+				[&] ([[maybe_unused]] math::Result& r) {
 					changed |= Drag("Начальная оценка", &initial_guess, drag_speed, min, max);
 				});
 

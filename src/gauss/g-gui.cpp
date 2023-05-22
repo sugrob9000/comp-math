@@ -1,6 +1,7 @@
-#include "gauss/gui.hpp"
+#include "gauss/g-gui.hpp"
 #include "gauss/solve.hpp"
-#include "imcpp20.hpp"
+#include "gui.hpp"
+#include "imhelper.hpp"
 #include "util/util.hpp"
 #include <fstream>
 
@@ -13,8 +14,6 @@ constexpr static ImGuiWindowFlags static_window_flags
 	| ImGuiWindowFlags_NoMove
 	| ImGuiWindowFlags_NoSavedSettings
 	| ImGuiWindowFlags_NoBringToFrontOnFocus;
-
-constexpr static ImColor error_text_color(0.9f, 0.2f, 0.2f, 1.0f);
 
 /*
  * Create a table which uses some fraction of the remaining window height
@@ -44,13 +43,13 @@ void Gauss::Input::widget ()
 			case File_load_status::ok:
 				break;
 			case File_load_status::unreadable:
-				TextColored(error_text_color, "Не удалось прочитать файл");
+				TextColored(gui::error_text_color, "Не удалось прочитать файл");
 				break;
 			case File_load_status::bad_dimensions:
-				TextColored(error_text_color, "Некорректные размерности матрицы в файле");
+				TextColored(gui::error_text_color, "Некорректные размерности матрицы в файле");
 				break;
 			case File_load_status::bad_data:
-				TextColored(error_text_color, "В файле не численные данные");
+				TextColored(gui::error_text_color, "В файле не численные данные");
 				break;
 			}
 		}
@@ -180,7 +179,7 @@ void Gauss::Output::widget () const
 			for (unsigned col = 0; col < diag; col++) {
 				TableNextColumn();
 				if (mat[row][col] != 0) {
-					TextFmtColored(error_text_color, FMT_STRING("{}"), mat[row][col]);
+					TextFmtColored(gui::error_text_color, FMT_STRING("{}"), mat[row][col]);
 					triangulation_error = true;
 				}
 			}
@@ -193,7 +192,7 @@ void Gauss::Output::widget () const
 	}
 
 	if (triangulation_error)
-		TextColored(error_text_color, "Ошибка при триангуляции. Матрица не треугольная.");
+		TextColored(gui::error_text_color, "Ошибка при триангуляции. Матрица не треугольная.");
 
 	Separator();
 

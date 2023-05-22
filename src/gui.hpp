@@ -27,4 +27,6 @@ constexpr inline ImGuiWindowFlags fullscreen_window_flags
 | ImGuiWindowFlags_NoTitleBar
 | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
+constexpr inline ImColor error_text_color(0.9f, 0.2f, 0.2f, 1.0f);
+
 } // namespace gui

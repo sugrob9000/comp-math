@@ -15,7 +15,7 @@ class Integration: public Task {
 	double precision = 0.01;
 	double low = -0.5, high = 1.3;
 
-	constexpr static unsigned min_subdivisions = 2, max_subdivisions = 1 << 10;
+	constexpr static unsigned min_subdivisions = 2, max_subdivisions = 1024;
 	struct Result {
 		double calculated = 0.0;
 		double exact = 0.0;
@@ -32,6 +32,7 @@ class Integration: public Task {
 	void settings_widget ();
 	void result_window () const;
 	void result_visualization () const;
+
 public:
 	Integration () { update_calculation(); }
 	void gui_frame () override;

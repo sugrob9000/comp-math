@@ -44,4 +44,6 @@ double integrate_simpson (double (*f) (double), double low, double high, unsigne
 		even += f(low + step * (2 * i));
 	return (edges + 4*odd + 2*even) * step / 3;
 }
+
+
 } // namespace math

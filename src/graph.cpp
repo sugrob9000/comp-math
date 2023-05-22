@@ -1,5 +1,5 @@
 #include "graph.hpp"
-#include "imcpp20.hpp"
+#include "imhelper.hpp"
 #include "math.hpp"
 #include "util/util.hpp"
 #include <glm/gtx/matrix_transform_2d.hpp>
@@ -122,7 +122,6 @@ void Graph_draw_context::trapezoid
 			drawlist.AddConvexPolyFilled(points, 4, color_fill);
 		} else {
 			const double yy1 = xy1.y - yy0;
-			const double yy2 = xy2.y - yy0;
 			const float x_intercept = yy1 * (xy1.x - xy2.x) / (xy2.y - xy1.y) + xy1.x;
 			const ImVec2 middle = { x_intercept, yy0 };
 			drawlist.AddTriangleFilled(middle, points[3], points[0], color_fill);
@@ -134,12 +133,11 @@ void Graph_draw_context::trapezoid
 
 void Graph_draw_context::background ()
 {
-	const vec3 screen_zero = world_screen_transform * vec3(0, 0, 1);
-	const char zero_char[1] = { '0' };
 
 	for (int coord: { 0, 1 }) {
 		{ // Draw main axis
 			ImVec2 pos = ortho_line(coord, 0, color_thick_lines, 3.0f);
+			const char zero_char[1] = { '0' };
 			drawlist.AddText({ pos.x + 2, pos.y }, color_thick_lines, zero_char, zero_char+1);
 		}
 

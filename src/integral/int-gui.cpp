@@ -1,5 +1,5 @@
 #include "gui.hpp"
-#include "imcpp20.hpp"
+#include "imhelper.hpp"
 #include "integral/calc.hpp"
 #include "integral/int-gui.hpp"
 #include "util/util.hpp"
@@ -62,7 +62,7 @@ void Integration::result_visualization () const
 	constexpr uint32_t dot_color = fill_color | 0xFF'000000;
 
 	constexpr float limit_thickness = 2.0;
-	const auto f = functions[active_function_id].compute;
+	const auto& f = functions[active_function_id].compute;
 	const double step = (high - low) / result.subdivisions;
 
 	draw.vert_line(low, limit_color, limit_thickness);
@@ -90,20 +90,14 @@ void Integration::result_visualization () const
 	}
 
 	case Method::trapezoid: {
-		// TODO: use the `prev` idiom
-		draw.dot({ low, f(low) }, dot_color);
 		dvec2 prev = { low, f(low) };
-
-		for (unsigned i = 0; i < result.subdivisions; i++) {
-			dvec2 cur;
-			cur.x = low + step * i;
-
-			const double x1 = low + step * i;
-			const double x2 = low + step * (i+1);
-			const double y1 = f(x1);
-			const double y2 = f(x2);
-			draw.trapezoid(x1, x2, 0, y1, y2, outline_color, fill_color);
-			draw.dot({ x2, y2 }, dot_color);
+		draw.dot(prev, dot_color);
+		for (unsigned i = 1; i <= result.subdivisions; i++) {
+			const double x = low + step * i;
+			const dvec2 cur = { x, f(x) };
+			draw.trapezoid(cur.x, prev.x, 0, cur.y, prev.y, outline_color, fill_color);
+			draw.dot(cur, dot_color);
+			prev = cur;
 		}
 		break;
 	}
@@ -121,8 +115,6 @@ void Integration::result_visualization () const
 void Integration::settings_widget ()
 {
 	constexpr float drag_speed = 0.03;
-	constexpr float drag_speed_fast = 0.1;
-
 	bool query_changed = false;
 
 	if (auto node = ImScoped::TreeNode("Метод")) {
@@ -163,7 +155,6 @@ void Integration::settings_widget ()
 	}
 
 	TextUnformatted("Область интегрирования");
-	constexpr double min_width = 1e-2;
 	query_changed |= DragMinMax("bounds", &low, &high, drag_speed, 1e-2);
 
 	query_changed |= Drag("Погрешность", &precision, 1e-4,
@@ -180,14 +171,12 @@ void Integration::result_window () const
 {
 	if (auto w = Window("Результат", nullptr, gui::floating_window_flags)) {
 		if (result.diverges) {
-			TextFmt("Похоже, интеграл расходится на интервале ({}, {})", low, high);
-		} else {
-			TextFmt(
-					"Значение интеграла: {:.6}\n"
-					"(Точное значение: {:.6})\n"
-					"{} интервалов для погрешности {}",
-					result.calculated, result.exact, result.subdivisions, precision);
+			TextFmtColored(gui::error_text_color,
+					"Похоже, интеграл расходится на интервале ({}, {})\n", low, high);
 		}
+		TextFmt("Вычисленное значение интеграла: {:.6}\n", result.calculated);
+		if (!std::isnan(result.exact)) TextFmt("(Точное значение: {:.6})\n", result.exact);
+		TextFmt("{} интервалов для погрешности {}", result.subdivisions, precision);
 	}
 }
 
@@ -206,15 +195,13 @@ double Integration::integrate_once (unsigned subdivisions) const
 void Integration::update_calculation ()
 {
 	const Function_spec& f = functions[active_function_id];
-	const double exact_result = f.antiderivative(high) - f.antiderivative(low);
-
 	precision = std::clamp(precision, min_precision, max_precision);
 
-	const double factor = [&] {
+	const double factor = 1.0 / [&] {
 		switch (active_method) {
-		case Method::rect: return rect_offset == math::Rect_offset::middle ? 1.0 / 3 : 1.0;
-		case Method::trapezoid: return 1.0 / 3;
-		case Method::simpson: return 1.0 / 15;
+		case Method::rect: return rect_offset == math::Rect_offset::middle ? 3 : 1;
+		case Method::trapezoid: return 3;
+		case Method::simpson: return 15;
 		}
 		unreachable();
 	} ();
@@ -222,7 +209,9 @@ void Integration::update_calculation ()
 	unsigned subdivisions = min_subdivisions;
 	double last_result = integrate_once(subdivisions);
 	double last_diff = std::numeric_limits<double>::max();
-	bool diverges = false;
+
+	constexpr int diverge_strike_threshold = 2;
+	int diverge_strikes = 0;
 
 	do {
 		subdivisions *= 2;
@@ -230,10 +219,9 @@ void Integration::update_calculation ()
 		const double diff = std::abs(cur_result - last_result) * factor;
 		last_result = cur_result;
 
-		if (std::exchange(last_diff, diff) < diff) {
-			diverges = true;
+		if (std::exchange(last_diff, diff) < diff
+		&& ++diverge_strikes == diverge_strike_threshold)
 			break;
-		}
 		if (diff < precision)
 			break;
 	} while (subdivisions < max_subdivisions);
@@ -241,7 +229,7 @@ void Integration::update_calculation ()
 	result = {
 		.calculated = last_result,
 		.exact = f.antiderivative(high) - f.antiderivative(low),
-		.diverges = diverges,
+		.diverges = diverge_strikes >= diverge_strike_threshold,
 		.subdivisions = subdivisions
 	};
 }
