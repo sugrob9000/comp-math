@@ -12,7 +12,7 @@
 int main ()
 {
 	gui::init(1280, 760);
-	std::unique_ptr<Task> task(new Integration);
+	std::unique_ptr<Task> task(new Approx);
 
 	// Draw at least this many frames at a steady rate after an event
 	constexpr int max_frames_since_event = 2;

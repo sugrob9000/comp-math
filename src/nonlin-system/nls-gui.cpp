@@ -99,7 +99,7 @@ void Nonlinear_system::gui_frame ()
 
 void Nonlinear_system::settings_widget ()
 {
-	bool query_changed = false;
+	bool dirty = false;
 
 	TextUnformatted("Функции");
 	if (auto table = Table("func", 3)) {
@@ -115,7 +115,7 @@ void Nonlinear_system::settings_widget ()
 						std::swap(active_function_id[0], active_function_id[1]);
 					else
 						active_function_id[i] = func_id;
-					query_changed = true;
+					dirty = true;
 				}
 			}
 		}
@@ -123,16 +123,16 @@ void Nonlinear_system::settings_widget ()
 
 	constexpr float drag_speed = 0.03;
 	TextUnformatted("Начальное приближение");
-	query_changed |= DragN("##guess", glm::value_ptr(initial_guess), 2, drag_speed);
+	dirty |= DragN("##guess", glm::value_ptr(initial_guess), 2, drag_speed);
 	constexpr double min_precision = 1e-6;
 	constexpr double max_precision = 1e-1;
-	query_changed |= Drag("Погрешность", &precision, 1e-4,
+	dirty |= Drag("Погрешность", &precision, 1e-4,
 			min_precision, max_precision, nullptr, ImGuiSliderFlags_Logarithmic);
 
 	TextUnformatted("Вид");
 	graph.settings_widget();
 
-	if (query_changed)
+	if (dirty)
 		update_calculation();
 }
 

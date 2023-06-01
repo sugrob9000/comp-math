@@ -3,7 +3,6 @@
 #include "integral/calc.hpp"
 #include "integral/int-gui.hpp"
 #include "util/util.hpp"
-#include <algorithm>
 #include <numbers>
 
 using namespace ImGui;
@@ -115,7 +114,7 @@ void Integration::result_visualization () const
 void Integration::settings_widget ()
 {
 	constexpr float drag_speed = 0.03;
-	bool query_changed = false;
+	bool dirty = false;
 
 	if (auto node = ImScoped::TreeNode("Метод")) {
 		constexpr static const char* rect_method_names[3] = {
@@ -129,7 +128,7 @@ void Integration::settings_widget ()
 					active_method == Method::rect && rect_offset == offs)) {
 				active_method = Method::rect;
 				rect_offset = offs;
-				query_changed = true;
+				dirty = true;
 			}
 		}
 
@@ -140,7 +139,7 @@ void Integration::settings_widget ()
 		for (auto [method, name]: other_methods) {
 			if (RadioButton(name, active_method == method)) {
 				active_method = method;
-				query_changed = true;
+				dirty = true;
 			}
 		}
 	}
@@ -149,21 +148,21 @@ void Integration::settings_widget ()
 		for (unsigned id = 0; id < std::size(functions); id++) {
 			if (RadioButton(functions[id].name, id == active_function_id)) {
 				active_function_id = id;
-				query_changed = true;
+				dirty = true;
 			}
 		}
 	}
 
 	TextUnformatted("Область интегрирования");
-	query_changed |= DragMinMax("bounds", &low, &high, drag_speed, 1e-2);
+	dirty |= DragMinMax("bounds", &low, &high, drag_speed, 1e-2);
 
-	query_changed |= Drag("Погрешность", &precision, 1e-4,
+	dirty |= Drag("Погрешность", &precision, 1e-4,
 			min_precision, max_precision, nullptr, ImGuiSliderFlags_AlwaysClamp);
 
 	TextUnformatted("Вид");
 	graph.settings_widget();
 
-	if (query_changed)
+	if (dirty)
 		update_calculation();
 }
 

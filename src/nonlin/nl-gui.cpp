@@ -113,15 +113,15 @@ void Nonlinear::settings_widget ()
 
 		constexpr auto min = -std::numeric_limits<double>::infinity();
 		constexpr auto max = std::numeric_limits<double>::infinity();
-		bool changed = false;
+		bool dirty = false;
 
 		if (chosen_method_is<math::Iteration_result>()) {
 			PushItemWidth(CalcItemWidth() * 0.5);
-			changed |= Drag("λ", &lambda, drag_speed);
+			dirty |= Drag("λ", &lambda, drag_speed);
 			SameLine();
 			if (double one_over = 1.0/lambda; Drag("1/λ", &one_over, drag_speed)) {
 				lambda = 1.0 / one_over;
-				changed = true;
+				dirty = true;
 			}
 			PopItemWidth();
 		}
@@ -131,20 +131,20 @@ void Nonlinear::settings_widget ()
 				[&] ([[maybe_unused]] math::Chords_result& r) {
 					TextUnformatted("Интервал изоляции корня");
 					constexpr double min_seek_width = 1e-2;
-					changed |= DragMinMax("nl", &seek_low, &seek_high, drag_speed, min_seek_width);
+					dirty |= DragMinMax("nl", &seek_low, &seek_high, drag_speed, min_seek_width);
 				},
 				[&] ([[maybe_unused]] math::Result& r) {
-					changed |= Drag("Начальная оценка", &initial_guess, drag_speed, min, max);
+					dirty |= Drag("Начальная оценка", &initial_guess, drag_speed, min, max);
 				});
 
 		if (!no_chosen_method()) {
 			constexpr double min_precision = 1e-6;
 			constexpr double max_precision = 1e-1;
-			changed |= Drag("Погрешность", &precision, 1e-4,
+			dirty |= Drag("Погрешность", &precision, 1e-4,
 					min_precision, max_precision, nullptr, ImGuiSliderFlags_Logarithmic);
 		}
 
-		if (changed) update_calculation();
+		if (dirty) update_calculation();
 	}
 
 	if (auto t = ImScoped::TreeNode("Функция")) {

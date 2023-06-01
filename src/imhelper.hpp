@@ -157,7 +157,7 @@ bool InputNumber (const char* l, T* p, T step = 0, T step_fast = 0, const char* 
 template <ScalarType T>
 bool InputNumberN (const char* l, T* p, int n, T step = 0, T step_fast = 0, const char* fmt = nullptr, ImGuiInputTextFlags flags = 0)
 {
-	return InputScalar(l, DataTypeEnum<T>, p, n, (step == 0 ? nullptr : &step), (step_fast == 0 ? nullptr : &step_fast), fmt, flags);
+	return InputScalarN(l, DataTypeEnum<T>, p, n, (step == 0 ? nullptr : &step), (step_fast == 0 ? nullptr : &step_fast), fmt, flags);
 }
 
 
