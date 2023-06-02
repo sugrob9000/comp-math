@@ -116,14 +116,13 @@ void Nonlinear::settings_widget ()
 		bool dirty = false;
 
 		if (chosen_method_is<math::Iteration_result>()) {
-			PushItemWidth(CalcItemWidth() * 0.5);
+			ImScoped::ItemWidth width(CalcItemWidth() * 0.5);
 			dirty |= Drag("λ", &lambda, drag_speed);
 			SameLine();
 			if (double one_over = 1.0/lambda; Drag("1/λ", &one_over, drag_speed)) {
 				lambda = 1.0 / one_over;
 				dirty = true;
 			}
-			PopItemWidth();
 		}
 
 		// Input interval when using chords, just one initial guess otherwise
@@ -165,7 +164,7 @@ void Nonlinear::maybe_result_window () const
 	if (no_chosen_method()) return;
 
 	if (auto w = Window("Результат", nullptr, gui::floating_window_flags)) {
-		PushTextWrapPos(300);
+		ImScoped::TextWrapPos wrap_pos(300);
 		visit_calculation(
 				[&] (const math::Chords_result& r) {
 					if (r.has_root) {
@@ -197,7 +196,6 @@ void Nonlinear::maybe_result_window () const
 						TextFmt("Алгоритм расходится после {} итераций", r.steps.size());
 					}
 				});
-		PopTextWrapPos();
 	}
 }
 

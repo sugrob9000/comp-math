@@ -126,13 +126,20 @@ bool Approx::Input::widget ()
 
 	constexpr float drag_speed = 0.03;
 	size_t removed = -1;
-	for (size_t i = 0; i < points.size(); i++) {
-		PushID(i);
-		dirty |= DragN("##add", glm::value_ptr(points[i]), 2, drag_speed);
-		SameLine();
-		if (SmallButton("x"))
-			removed = i;
-		PopID();
+
+	{
+		ImScoped::StyleColor colors {
+			{ ImGuiCol_Button, 0xFF'9999FF },
+			{ ImGuiCol_ButtonHovered, 0xFF'7777FF },
+			{ ImGuiCol_ButtonActive, 0xFF'4444FF }
+		};
+		for (size_t i = 0; i < points.size(); i++) {
+			ImScoped::ID id(i);
+			dirty |= DragN("##add", glm::value_ptr(points[i]), 2, drag_speed);
+			SameLine();
+			if (SmallButton("x"))
+				removed = i;
+		}
 	}
 
 	if (removed != -1) {
@@ -237,7 +244,7 @@ void Approx::update_calculation ()
 	const std::span<const dvec2> points = input.points;
 	if (method == Method::find_best) {
 		constexpr static Method other_methods[] = {
-			linear, exponential, logarithmic, power, polynomial_2, polynomial_3,
+			linear, polynomial_2, polynomial_3, exponential, logarithmic, power,
 		};
 		last_output = calculate(other_methods[0], points);
 		for (size_t i = 1; i < std::size(other_methods); i++) {

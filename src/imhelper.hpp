@@ -26,6 +26,9 @@ namespace ImScoped {
 // (Wrapping with the lambda inside detail::Widget::Widget() rather than outside it fixes
 //  the ABI issue, but only GCC compiles this, and it doesn't resolve overloaded functions.)
 
+#define IM_SCOPED_LAMBDA_WRAP(F) \
+	[] (auto&&... args) { return F(std::forward<decltype(args)>(args)...); }
+
 namespace detail {
 template <auto BeginF, auto EndF, bool AlwaysCallEndF = false> class Widget {
 	bool Shown;
@@ -46,8 +49,9 @@ public:
 	Widget& operator= (Widget&&) = delete;
 };
 } // namespace detail
+
 #define IM_SCOPED_WIDGET(BEGIN, ...) \
-	detail::Widget<[] (auto&&... args) { return BEGIN(std::forward<decltype(args)>(args)...); }, __VA_ARGS__>
+	detail::Widget<IM_SCOPED_LAMBDA_WRAP(BEGIN), __VA_ARGS__>
 
 using Window = IM_SCOPED_WIDGET(ImGui::Begin, ImGui::End, true);
 using ChildWindow = IM_SCOPED_WIDGET(ImGui::BeginChild, ImGui::EndChild, true);
@@ -78,6 +82,40 @@ using TreeNode = IM_SCOPED_WIDGET(ImGui::TreeNode, ImGui::TreePop);
 
 #undef IM_SCOPED_WIDGET
 
+namespace detail {
+template <auto PushF, auto PopF> struct Push {
+	explicit Push (auto&&... a) { PushF(std::forward<decltype(a)>(a)...); }
+	~Push () { PopF(); }
+};
+} // namespace detail
+
+using ID = detail::Push<IM_SCOPED_LAMBDA_WRAP(ImGui::PushID), ImGui::PopID>;
+using Font = detail::Push<ImGui::PushFont, ImGui::PopFont>;
+using TabStop = detail::Push<ImGui::PushFont, ImGui::PopFont>;
+using ButtonRepeat = detail::Push<ImGui::PushButtonRepeat, ImGui::PopButtonRepeat>;
+using ItemWidth = detail::Push<ImGui::PushItemWidth, ImGui::PopItemWidth>;
+using TextWrapPos = detail::Push<IM_SCOPED_LAMBDA_WRAP(ImGui::PushTextWrapPos), ImGui::PopTextWrapPos>;
+
+// TODO generalize for PushStyleVar, get rid of duplication
+class StyleColor {
+	int n;
+	using Key = ImGuiCol;
+	using Value2 = ImU32;
+	using Value1 = ImVec4;
+public:
+	explicit StyleColor (std::initializer_list<std::pair<Key, Value1>> colors): n(colors.size()) {
+		for (const auto& [col, value]: colors)
+			ImGui::PushStyleColor(col, value);
+	}
+	explicit StyleColor (std::initializer_list<std::pair<Key, Value2>> colors): n(colors.size()) {
+		for (const auto& [col, value]: colors)
+			ImGui::PushStyleColor(col, value);
+	}
+	template <typename Value> StyleColor (Key key, Value value): StyleColor({ key, value }) {}
+	~StyleColor () { ImGui::PopStyleColor(n); }
+};
+
+#undef IM_SCOPED_LAMBDA_WRAP
 } // namespace ImScoped
 
 namespace ImGui {
@@ -94,17 +132,15 @@ void TextFmt (const Fmt& fmt, Args&&... args)
 template <typename Fmt, typename... Args>
 void TextFmtWrapped (const Fmt& fmt, Args&&... args)
 {
-	PushTextWrapPos();
+	ImScoped::TextWrapPos wrap_pos;
 	TextFmtV(fmt, fmt::make_format_args(std::forward<Args&&>(args)...));
-	PopTextWrapPos();
 }
 
 template <typename Fmt, typename... Args>
 void TextFmtColored (const ImVec4& col, const Fmt& fmt, Args&&... args)
 {
-	PushStyleColor(ImGuiCol_Text, col);
+	ImScoped::StyleColor color(ImGuiCol_Text, col);
 	TextFmtV(fmt, fmt::make_format_args(std::forward<Args&&>(args)...));
-	PopStyleColor();
 }
 
 // ===================== Get ImGuiDataType enum from an actual type =====================
@@ -166,13 +202,11 @@ template <ScalarType T>
 bool DragMinMax (const char* id, T* low, T* high, float speed, T min_diff = 0, T min = std::numeric_limits<T>::lowest(), T max = std::numeric_limits<T>::max(), const char* fmt = nullptr, ImGuiSliderFlags = 0)
 {
 	bool result = false;
-	PushID(id);
-	PushItemWidth(CalcItemWidth() * 0.5);
+	ImScoped::ID id_guard(id);
+	ImScoped::ItemWidth width_guard(CalcItemWidth() * 0.5);
 	result |= Drag("##l", low, speed, min, *high - min_diff, fmt);
 	SameLine();
 	result |= Drag("##h", high, speed, *low + min_diff, max, fmt);
-	PopItemWidth();
-	PopID();
 	return result;
 }
 

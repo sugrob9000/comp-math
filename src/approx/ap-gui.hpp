@@ -8,8 +8,7 @@
 
 class Approx: public Task {
 	enum class Method {
-		linear, exponential, logarithmic, power,
-		polynomial_2, polynomial_3, find_best
+		find_best, linear, polynomial_2, polynomial_3, exponential, logarithmic, power,
 	};
 	Method method = Method::find_best;
 

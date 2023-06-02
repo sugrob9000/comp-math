@@ -54,6 +54,9 @@ static std::array<double,N+1> approx_polynomial (Range&& points)
 	}
 
 	double main_det = determinant(main);
+	if (main_det == 0)
+		return {};
+
 	std::array<double,N+1> result;
 	for (size_t i = 0; i < N+1; i++) {
 		Mat mat = main;
