@@ -3,6 +3,7 @@
 #include "gui.hpp"
 #include "util/util.hpp"
 #include <algorithm>
+#include <cassert>
 #include <fstream>
 
 using namespace ImGui;
@@ -20,19 +21,25 @@ void Approx::gui_frame ()
 	if (auto w = Window("Параметры", nullptr, gui::floating_window_flags))
 		settings_widget();
 
-	{
+	{ // Render graph
 		Graph_draw_context draw(graph);
 		draw.background();
-		const auto f = output.get_function();
+		const auto f = last_output.get_function();
+
+		{ // Some functions only accept a positive argument
+			using enum Method;
+			double min = -std::numeric_limits<double>::infinity();
+			if (last_output.method == power || last_output.method == logarithmic)
+				min = 0;
+			draw.function_plot(0xFF'996633, f, min);
+		}
 
 		for (const auto& p: input.points) {
-			draw.dot(p, 0xFF'993333);
-			const double y = f(p.x);
-			draw.line(p, dvec2(p.x, y), 0xFF'1111EE, 2.0);
+			draw.dot(p, 0xFF'0000FF);
+			draw.line(p, dvec2(p.x, f(p.x)), 0xFF'1111EE, 2.0);
 		}
-		draw.function_plot(0xFF'336699, f);
 	}
-	output.result_window();
+	last_output.result_window();
 }
 
 std::function<double(double)> Approx::Output::get_function () const
@@ -45,6 +52,7 @@ std::function<double(double)> Approx::Output::get_function () const
 	case power: return [=] (double x) { return a * pow(x, b); };
 	case polynomial_2: return [=] (double x) { return a + b*x + c*x*x; };
 	case polynomial_3: return [=] (double x) { return a + b*x + c*x*x + d*x*x*x; };
+	case find_best: break;
 	}
 	unreachable();
 }
@@ -54,19 +62,26 @@ void Approx::settings_widget ()
 	bool dirty = false;
 
 	if (auto node = ImScoped::TreeNode("Метод")) {
-		const auto selector = [&] (const char* name, Method m) {
+		using enum Method;
+		struct Method_spec {
+			const char* name;
+			Method method;
+		};
+		constexpr static Method_spec methods[] = {
+			{ "С наименьшим отклонением", find_best },
+			{ "Линейная функция", linear },
+			{ "Полином степени 2", polynomial_2 },
+			{ "Полином степени 3", polynomial_3 },
+			{ "Экспонента", exponential },
+			{ "Логарифм", logarithmic },
+			{ "Степенная функция", power },
+		};
+		for (auto [name, m]: methods) {
 			if (RadioButton(name, method == m)) {
 				method = m;
 				dirty = true;
 			}
-		};
-		using enum Method;
-		selector("Линейная функция", linear);
-		selector("Полином степени 2", polynomial_2);
-		selector("Полином степени 3", polynomial_3);
-		selector("Экспонента", exponential);
-		selector("Логарифм", logarithmic);
-		selector("Степенная функция", power);
+		}
 	}
 
 	if (auto node = ImScoped::TreeNode("Данные"))
@@ -169,6 +184,7 @@ void Approx::Output::result_window () const
 		case Method::power: TextFmt("{:.3} x^{:.3}", a, b); break;
 		case Method::polynomial_2: TextFmt("{:.3} {:+.3}x {:+.3}x²", a, b, c); break;
 		case Method::polynomial_3: TextFmt("{:.3} {:+.3}x {:+.3}x² {:+.3}x³", a, b, c, d); break;
+		case Method::find_best: unreachable();
 		}
 		TextFmt("Среднеквадратичное отклонение: {:.3}", deviation);
 	}
@@ -182,33 +198,54 @@ void Approx::Output::assign_coefs (std::array<double, N> c) requires(N<=4)
 		this->*off[i] = c[i];
 }
 
-void Approx::update_calculation ()
+auto Approx::calculate (Method method, std::span<const dvec2> points) -> Output
 {
-	const std::span<const dvec2> points = input.points;
+	Output out;
+	out.method = method;
+
 	switch (method) {
 		using enum Method;
 		using namespace math;
 	case linear:
-		output.assign_coefs(approx_linear(points));
-		output.correlation = math::correlation(points);
+		out.assign_coefs(approx_linear(points));
+		out.correlation = math::correlation(points);
 		break;
-	case polynomial_2: output.assign_coefs(approx_quadratic(points)); break;
-	case polynomial_3: output.assign_coefs(approx_cubic(points)); break;
-	case exponential: output.assign_coefs(approx_exponential(points)); break;
-	case logarithmic: output.assign_coefs(approx_logarithmic(points)); break;
-	case power: output.assign_coefs(approx_power(points)); break;
+	case polynomial_2: out.assign_coefs(approx_quadratic(points)); break;
+	case polynomial_3: out.assign_coefs(approx_cubic(points)); break;
+	case exponential: out.assign_coefs(approx_exponential(points)); break;
+	case logarithmic: out.assign_coefs(approx_logarithmic(points)); break;
+	case power: out.assign_coefs(approx_power(points)); break;
+	case find_best: FATAL("find_best is not valid for Output");
 	}
-	output.method = method;
 
-	{
-		const auto f = output.get_function();
-		double deviation = 0;
-		for (const dvec2& p: points) {
-			const double diff = f(p.x) - p.y;
-			deviation += diff * diff;
+	const auto f = out.get_function();
+	double deviation = 0;
+	for (const dvec2& p: points) {
+		const double diff = f(p.x) - p.y;
+		deviation += diff * diff;
+	}
+	deviation /= points.size();
+	deviation = sqrt(deviation);
+	out.deviation = deviation;
+
+	return out;
+}
+
+void Approx::update_calculation ()
+{
+	using enum Method;
+	const std::span<const dvec2> points = input.points;
+	if (method == Method::find_best) {
+		constexpr static Method other_methods[] = {
+			linear, exponential, logarithmic, power, polynomial_2, polynomial_3,
+		};
+		last_output = calculate(other_methods[0], points);
+		for (size_t i = 1; i < std::size(other_methods); i++) {
+			Output out = calculate(other_methods[i], points);
+			if (out.deviation < last_output.deviation)
+				last_output = out;
 		}
-		deviation /= points.size();
-		deviation = sqrt(deviation);
-		output.deviation = deviation;
+	} else {
+		last_output = calculate(method, points);
 	}
 }

@@ -7,8 +7,11 @@
 #include <vector>
 
 class Approx: public Task {
-	enum class Method { linear, polynomial_2, polynomial_3, exponential, logarithmic, power };
-	Method method;
+	enum class Method {
+		linear, exponential, logarithmic, power,
+		polynomial_2, polynomial_3, find_best
+	};
+	Method method = Method::find_best;
 
 	struct Input {
 		std::vector<dvec2> points;
@@ -25,15 +28,17 @@ class Approx: public Task {
 	Input input;
 
 	struct Output {
-		Method method;
+		Method method; // cannot be find_best
 		double a, b, c, d;
+		double deviation;
+		double correlation; // only valid when method is linear
+
 		template <size_t N> void assign_coefs (std::array<double, N>) requires(N<=4);
 		std::function<double(double)> get_function () const;
 		void result_window () const;
-		double deviation;
-		double correlation;
 	};
-	Output output;
+	Output last_output;
+	static Output calculate (Method, std::span<const dvec2>);
 
 	Graph graph { { -0.5, -0.5 }, { 3.5, 3.5 } };
 
