@@ -1,8 +1,8 @@
 #pragma once
 
-#include "math.hpp"
-#include <span>
 #include <array>
+#include <math.hpp>
+#include <span>
 
 namespace math {
 double correlation (std::span<const dvec2>);

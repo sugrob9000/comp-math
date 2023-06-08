@@ -1,8 +1,8 @@
-#include "calc.hpp"
-#include "util/util.hpp"
+#include <approx/calc.hpp>
 #include <cmath>
 #include <glm/matrix.hpp>
 #include <ranges>
+#include <util/util.hpp>
 
 namespace math {
 using std::views::transform;

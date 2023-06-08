@@ -1,18 +1,19 @@
-#include "approx/ap-gui.hpp"
-#include "gauss/g-gui.hpp"
-#include "gui.hpp"
-#include "imhelper.hpp"
-#include "integral/int-gui.hpp"
-#include "nonlin-system/nls-gui.hpp"
-#include "nonlin/nl-gui.hpp"
-#include "task.hpp"
+#include <approx/ap-gui.hpp>
 #include <chrono>
+#include <gauss/g-gui.hpp>
+#include <gui.hpp>
+#include <imhelper.hpp>
+#include <integral/int-gui.hpp>
+#include <interp/it-gui.hpp>
+#include <nonlin-system/nls-gui.hpp>
+#include <nonlin/nl-gui.hpp>
+#include <task.hpp>
 #include <thread>
 
 int main ()
 {
 	gui::init(1280, 760);
-	std::unique_ptr<Task> task(new Approx);
+	std::unique_ptr<Task> task(new Interp);
 
 	// Draw at least this many frames at a steady rate after an event
 	constexpr int max_frames_since_event = 2;
@@ -82,6 +83,7 @@ int main ()
 						task.reset(new Nonlinear_system);
 					if (ImGui::Button("Численное интегрирование")) task.reset(new Integration);
 					if (ImGui::Button("Аппроксимация")) task.reset(new Approx);
+					if (ImGui::Button("Интерполяция")) task.reset(new Interp);
 				}
 			}
 

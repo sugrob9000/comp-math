@@ -1,9 +1,9 @@
-#include "gui.hpp"
-#include "imhelper.hpp"
-#include "integral/calc.hpp"
-#include "integral/int-gui.hpp"
-#include "util/util.hpp"
+#include <gui.hpp>
+#include <imhelper.hpp>
+#include <integral/calc.hpp>
+#include <integral/int-gui.hpp>
 #include <numbers>
+#include <util/util.hpp>
 
 using namespace ImGui;
 using namespace ImScoped;

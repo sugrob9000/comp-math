@@ -111,7 +111,9 @@ public:
 		for (const auto& [col, value]: colors)
 			ImGui::PushStyleColor(col, value);
 	}
-	template <typename Value> StyleColor (Key key, Value value): StyleColor({ key, value }) {}
+	template <typename Value> StyleColor (Key key, Value value): n(1) {
+		ImGui::PushStyleColor(key, value);
+	}
 	~StyleColor () { ImGui::PopStyleColor(n); }
 };
 

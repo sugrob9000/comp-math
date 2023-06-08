@@ -1,13 +1,13 @@
-#include "gui.hpp"
-#include "imhelper.hpp"
-#include "util/util.hpp"
 #include <SDL2/SDL.h>
 #include <fstream>
 #include <glm/vec2.hpp>
+#include <gui.hpp>
 #include <imgui/imgui_impl_sdl2.h>
 #include <imgui/imgui_impl_sdlrenderer.h>
+#include <imhelper.hpp>
 #include <memory>
 #include <optional>
+#include <util/util.hpp>
 
 using Resolution = glm::vec<2, int>;
 

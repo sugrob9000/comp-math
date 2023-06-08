@@ -1,10 +1,10 @@
 #pragma once
 
-#include "graph.hpp"
-#include "math.hpp"
-#include "nonlin-system/calc.hpp"
-#include "task.hpp"
+#include <graph.hpp>
+#include <math.hpp>
+#include <nonlin-system/calc.hpp>
 #include <optional>
+#include <task.hpp>
 
 class Nonlinear_system: public Task {
 	unsigned active_function_id[2] = { 0, 1 };

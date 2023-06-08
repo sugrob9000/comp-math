@@ -1,5 +1,5 @@
-#include "integral/calc.hpp"
-#include "util/util.hpp"
+#include <integral/calc.hpp>
+#include <util/util.hpp>
 
 namespace math {
 

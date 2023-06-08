@@ -1,9 +1,10 @@
 #pragma once
 
-#include "approx/calc.hpp"
-#include "graph.hpp"
-#include "imhelper.hpp"
-#include "task.hpp"
+#include <approx/calc.hpp>
+#include <graph.hpp>
+#include <imhelper.hpp>
+#include <points-input.hpp>
+#include <task.hpp>
 #include <vector>
 
 class Approx: public Task {
@@ -12,19 +13,7 @@ class Approx: public Task {
 	};
 	Method method = Method::find_best;
 
-	struct Input {
-		std::vector<dvec2> points;
-		dvec2 new_point_input = {};
-
-		enum class File_load_status { ok, unreadable, bad_data };
-		void try_load_file ();
-		File_load_status last_file_load_status = File_load_status::ok;
-		constexpr static size_t path_buf_size = 256;
-		char path_buf[path_buf_size] = "vectors";
-
-		bool widget ();
-	};
-	Input input;
+	Points_input input{"vector.hpp"};
 
 	struct Output {
 		Method method; // cannot be find_best
@@ -45,7 +34,7 @@ class Approx: public Task {
 	void update_calculation ();
 
 public:
-	Approx ();
+	Approx () { update_calculation(); }
 	void gui_frame () override;
 	~Approx () override = default;
 };

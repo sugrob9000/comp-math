@@ -1,8 +1,8 @@
 #pragma once
 
-#include "graph.hpp"
-#include "integral/calc.hpp"
-#include "task.hpp"
+#include <graph.hpp>
+#include <integral/calc.hpp>
+#include <task.hpp>
 
 class Integration: public Task {
 	unsigned active_function_id = 0;

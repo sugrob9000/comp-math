@@ -1,8 +1,8 @@
 #pragma once
 
-#include "imhelper.hpp"
-#include "math.hpp"
 #include <functional>
+#include <imhelper.hpp>
+#include <math.hpp>
 #include <numeric>
 
 class Graph {

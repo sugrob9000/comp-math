@@ -1,6 +1,6 @@
-#include "nonlin/calc.hpp"
-#include "util/util.hpp"
 #include <cassert>
+#include <nonlin/calc.hpp>
+#include <util/util.hpp>
 
 namespace math {
 

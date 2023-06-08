@@ -1,9 +1,9 @@
 #pragma once
 
-#include "util/util.hpp"
+#include <algorithm>
 #include <memory>
 #include <span>
-#include <algorithm>
+#include <util/util.hpp>
 
 namespace math {
 // All matrices are presumed row-major. Triangular means upper triangular.

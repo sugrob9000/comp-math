@@ -1,9 +1,9 @@
 #pragma once
 
-#include "graph.hpp"
-#include "math.hpp"
-#include "nonlin/calc.hpp"
-#include "task.hpp"
+#include <graph.hpp>
+#include <math.hpp>
+#include <nonlin/calc.hpp>
+#include <task.hpp>
 #include <variant>
 
 // Single non-linear equation solver

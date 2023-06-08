@@ -1,8 +1,8 @@
 #pragma once
 
-#include "math.hpp"
-#include <vector>
+#include <math.hpp>
 #include <optional>
+#include <vector>
 
 namespace math {
 

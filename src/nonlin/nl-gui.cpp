@@ -1,9 +1,9 @@
-#include "gui.hpp"
-#include "imhelper.hpp"
-#include "nonlin/calc.hpp"
-#include "nonlin/nl-gui.hpp"
-#include "util/util.hpp"
 #include <cmath>
+#include <gui.hpp>
+#include <imhelper.hpp>
+#include <nonlin/calc.hpp>
+#include <nonlin/nl-gui.hpp>
+#include <util/util.hpp>
 #include <utility>
 
 using namespace ImGui;

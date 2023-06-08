@@ -1,8 +1,8 @@
 #pragma once
 
-#include "gauss/matrix.hpp"
-#include "task.hpp"
+#include <gauss/matrix.hpp>
 #include <optional>
+#include <task.hpp>
 
 class Gauss: public Task {
 	using Number = double;

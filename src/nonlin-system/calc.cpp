@@ -1,6 +1,6 @@
-#include "glm/gtx/norm.hpp"
-#include "nonlin-system/calc.hpp"
-#include "util/util.hpp"
+#include <glm/gtx/norm.hpp>
+#include <nonlin-system/calc.hpp>
+#include <util/util.hpp>
 
 math::Newton_system_result math::newtons_method_system
 (double (*f) (dvec2), double (*dfdx) (dvec2), double (*dfdy) (dvec2),

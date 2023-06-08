@@ -1,6 +1,6 @@
 #pragma once
 
-#include "gauss/matrix.hpp"
+#include <gauss/matrix.hpp>
 
 namespace math {
 
