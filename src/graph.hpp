@@ -38,7 +38,7 @@ public:
 	void function_plot
 		(uint32_t color, const std::function<double(double)>&,
 		 double low = -std::numeric_limits<double>::infinity(),
-		 double high = std::numeric_limits<double>::infinity(), unsigned n = 100);
+		 double high = std::numeric_limits<double>::infinity(), unsigned n = 100, float thick = 3.0);
 
 	void parametric_plot (uint32_t color, dvec2 (*) (double t), double t_low, double t_high);
 

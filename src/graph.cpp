@@ -172,7 +172,8 @@ void Graph_draw_context::background ()
 }
 
 void Graph_draw_context::function_plot
-(uint32_t color, const std::function<double(double)>& f, double l, double h, unsigned n)
+(uint32_t color, const std::function<double(double)>& f,
+ double l, double h, unsigned n, float thick)
 {
 	l = std::max(l, graph.view_low.x);
 	h = std::min(h, graph.view_high.x);
@@ -184,7 +185,7 @@ void Graph_draw_context::function_plot
 		const double x = l + i * step;
 		const double y = f(x);
 		const vec2 cur = world_screen_transform * vec3(x, y, 1);
-		drawlist.AddLine({ prev.x, prev.y }, { cur.x, cur.y }, color, 3.0f);
+		drawlist.AddLine({ prev.x, prev.y }, { cur.x, cur.y }, color, thick);
 		prev = cur;
 	}
 }

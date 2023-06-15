@@ -16,6 +16,11 @@ class Interp: public Task {
 		Points_input points{"vectors"}; // only for Lagrange method
 		struct Evenly_spaced {
 			double low = 0, high = 4;
+
+			enum class Input_method { values, sample_function, };
+			Input_method input_method = Input_method::sample_function;
+			unsigned sampled_function_id = 0; // only for `input_method == sample_function`
+
 			std::vector<double> values = { 1, 1.67, 0.99, 0, 0 };
 
 			double get_step () const { return (high - low) / (values.size() - 1); };
@@ -37,7 +42,7 @@ class Interp: public Task {
 	};
 	Output output;
 
-	Graph graph { { -0.5, -0.5 }, { 4.5, 3.5 } };
+	Graph graph { { -5, -1 }, { 5, 5 } };
 
 	void settings_widget ();
 	void update_calculation ();

@@ -43,10 +43,9 @@ Finite_differences newton_calc_finite_differences (std::span<const double> point
 std::function<double(double)> approx_newton
 (double low, double high, const Finite_differences& diff)
 {
-	assert(diff.diff.size() >= 2);
-	const double step = (high - low) / (diff.diff.size()-1);
-
-	return [low=low, high=high, diff=diff.diff, step=step] (double x) -> double {
+	return [low=low, high=high, diff=diff.diff] (double x) -> double {
+		if (diff.size() < 2) return 0;
+		const double step = (high - low) / (diff.size()-1);
 		const double left = x-low;
 		const double right = high-x;
 		const size_t n = diff.size();
@@ -56,42 +55,45 @@ std::function<double(double)> approx_newton
 		enum Direction { forward, backward };
 		Direction direction = (iif > n/2 ? backward : forward);
 
+		unsigned long long factorial = 1;
+		const auto update_factorial = [&] (int i) {
+			constexpr auto max = std::numeric_limits<unsigned long long>::max();
+			if (factorial >= max / i)
+				factorial = max;
+			else
+				factorial *= i;
+		};
+
+		double result = 0;
+		double t_acc = 1;
+
 		if (direction == forward) {
 			const int ii = floor(left / step);
 			const size_t i = ii;
-			assert(ii >= 0 && i < n-1);
 
 			const double x0 = low + step * i;
 			const double t = (x - x0) / step;
 
-			double result = 0;
-			double t_acc = 1;
-			unsigned long long factorial = 1;
 			for (size_t j = 0; j < n && i < diff[j].size(); j++) {
-				result += diff[j][i] * t_acc / factorial;
+				const double add = diff[j][i] * t_acc / factorial;
+				result += add;
 				t_acc *= t-j;
-				factorial *= j+1;
+				update_factorial(j+1);
 			}
-			return result;
 		} else {
 			const int ii = ceil(left / step);
 			const size_t i = ii;
-			assert(ii > 0 && i <= n-1);
 
 			const double xn = low + step * i;
 			const double t = (x - xn) / step;
-			assert(xn >= x);
 
-			double result = 0;
-			double t_acc = 1;
-			unsigned long long factorial = 1;
 			for (size_t j = 0; j < n && (i-j) < diff[j].size(); j++) {
 				result += diff[j][i-j] * t_acc / factorial;
 				t_acc *= t+j;
-				factorial *= j+1;
+				update_factorial(j+1);
 			}
-			return result;
 		}
+		return result;
 	};
 }
 

@@ -101,6 +101,21 @@ void Interp::Output::result_window () const
 	}
 }
 
+
+namespace {
+struct Function_spec {
+	const char* name;
+	double (*compute) (double);
+};
+constexpr Function_spec functions[] = {
+	{ "exp(-x²) - 0.5", [] (double x) { return exp(-x*x) - 0.5; }, },
+	{ "x² - 0.9", [] (double x) { return x*x-0.9; }, },
+	{ "sin(x) exp(x)", [] (double x) { return sin(x) * exp(x); }, },
+	{ "1/x", [] (double x) { return 1.0 / x; }, }
+};
+} // anon namespace
+
+
 void Interp::update_calculation ()
 {
 	using enum Method;
@@ -113,7 +128,16 @@ void Interp::update_calculation ()
 		output.function = math::approx_lagrange(input.points.view());
 		break;
 	case newton: {
-		const auto& es = input.evenly_spaced;
+		auto& es = input.evenly_spaced;
+		if (es.input_method == Input::Evenly_spaced::Input_method::sample_function) {
+			const double step = es.get_step();
+			double x = es.low;
+
+			for (double& v: es.values) {
+				v = functions[es.sampled_function_id].compute(x);
+				x += step;
+			}
+		}
 		output.diff = math::newton_calc_finite_differences(es.values);
 		output.function = math::approx_newton(es.low, es.high, output.diff);
 		break;
@@ -132,23 +156,44 @@ bool Interp::Input::Evenly_spaced::widget ()
 	TextUnformatted("Интервал значений");
 	dirty |= DragMinMax("even", &low, &high, drag_speed, min_width);
 
-	size_t size = values.size();
-	Drag("Количество точек", &size, drag_speed, size_t{2}, size_t{150});
-	TextFmt("Шаг: {:.3}", get_step());
-
-	if (size != values.size()) {
+	if (size_t size = values.size();
+			Drag("Количество точек", &size, drag_speed, size_t{2}, size_t{150})) {
 		values.resize(size);
 		dirty = true;
 	}
+	TextFmt("Шаг: {:.3}", get_step());
 
-	TextUnformatted("Значения");
-	double x = low;
-	const double step = get_step();
-	for (size_t i = 0; i < values.size(); i++) {
-		TextFmt("x = {:8.4}", x);
-		SameLine();
-		dirty |= Drag(ImGui::GenerateId(i), &values[i], drag_speed);
-		x += step;
+	const auto input_method_select = [&] (const char* name, Input_method im) {
+		if (RadioButton(name, input_method == im)) {
+			dirty = true;
+			input_method = im;
+		}
+	};
+	input_method_select("Ввести значения вручную", Input_method::values);
+	input_method_select("Взять значения функции", Input_method::sample_function);
+
+	switch (input_method) {
+	case Input_method::values: {
+		double x = low;
+		const double step = get_step();
+		for (size_t i = 0; i < values.size(); i++) {
+			TextFmt("x = {:8.4}", x);
+			SameLine();
+			dirty |= Drag(ImGui::GenerateId(i), &values[i], drag_speed);
+			x += step;
+		}
+		break;
+	}
+	case Input_method::sample_function: {
+		ImScoped::Indent indent_guard;
+		for (unsigned id = 0; id < std::size(functions); id++) {
+			if (RadioButton(functions[id].name, sampled_function_id == id)) {
+				sampled_function_id = id;
+				dirty = true;
+			}
+		}
+		break;
+	}
 	}
 
 	return dirty;

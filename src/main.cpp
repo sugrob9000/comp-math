@@ -1,6 +1,7 @@
 #include <approx/ap-gui.hpp>
 #include <chrono>
 #include <gauss/g-gui.hpp>
+#include <diffeq/de-gui.hpp>
 #include <gui.hpp>
 #include <imhelper.hpp>
 #include <integral/int-gui.hpp>
@@ -13,7 +14,12 @@
 int main ()
 {
 	gui::init(1280, 760);
-	std::unique_ptr<Task> task(new Interp);
+	std::unique_ptr<Task> task;
+
+	if constexpr (true) {
+		using Default_task = Diff_eq;
+		task.reset(new Default_task);
+	}
 
 	// Draw at least this many frames at a steady rate after an event
 	constexpr int max_frames_since_event = 2;

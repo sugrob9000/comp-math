@@ -91,10 +91,18 @@ template <auto PushF, auto PopF> struct Push {
 
 using ID = detail::Push<IM_SCOPED_LAMBDA_WRAP(ImGui::PushID), ImGui::PopID>;
 using Font = detail::Push<ImGui::PushFont, ImGui::PopFont>;
-using TabStop = detail::Push<ImGui::PushFont, ImGui::PopFont>;
+using TabStop = detail::Push<ImGui::PushTabStop, ImGui::PopTabStop>;
 using ButtonRepeat = detail::Push<ImGui::PushButtonRepeat, ImGui::PopButtonRepeat>;
 using ItemWidth = detail::Push<ImGui::PushItemWidth, ImGui::PopItemWidth>;
 using TextWrapPos = detail::Push<IM_SCOPED_LAMBDA_WRAP(ImGui::PushTextWrapPos), ImGui::PopTextWrapPos>;
+
+// TODO maybe there are more pairs where the closing function also accepts data
+class Indent {
+	float value;
+public:
+	Indent (float v = 0.0f): value(v) { ImGui::Indent(value); }
+	~Indent () { ImGui::Unindent(value); }
+};
 
 // TODO generalize for PushStyleVar, get rid of duplication
 class StyleColor {
