@@ -13,7 +13,7 @@ class Approx: public Task {
 	};
 	Method method = Method::find_best;
 
-	Points_input input{"vector.hpp"};
+	Points_input input{"points"};
 
 	struct Output {
 		Method method; // cannot be find_best

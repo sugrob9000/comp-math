@@ -16,11 +16,6 @@ int main ()
 	gui::init(1280, 760);
 	std::unique_ptr<Task> task;
 
-	if constexpr (true) {
-		using Default_task = Diff_eq;
-		task.reset(new Default_task);
-	}
-
 	// Draw at least this many frames at a steady rate after an event
 	constexpr int max_frames_since_event = 2;
 	int frames_since_event = 0;
@@ -90,6 +85,7 @@ int main ()
 					if (ImGui::Button("Численное интегрирование")) task.reset(new Integration);
 					if (ImGui::Button("Аппроксимация")) task.reset(new Approx);
 					if (ImGui::Button("Интерполяция")) task.reset(new Interp);
+					if (ImGui::Button("Дифференциальные уравнения")) task.reset(new Diff_eq);
 				}
 			}
 
