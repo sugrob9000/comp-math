@@ -44,7 +44,7 @@ inline void vmessage (const char* prefix, fmt::string_view format, fmt::format_a
 template <typename Fmt, typename... Args>
 void message (const char* prefix, const Fmt& format, Args&&... args)
 {
-	vmessage(prefix, format, fmt::make_format_args(std::forward<Args>(args)...));
+	vmessage(prefix, format, fmt::make_format_args(args...));
 }
 } // namespace detail
 

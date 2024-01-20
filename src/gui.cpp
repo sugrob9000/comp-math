@@ -19,7 +19,7 @@ struct Context {
 	SDL_Renderer* renderer;
 	ImGuiIO* im_io;
 
-	constexpr static const char window_title[] = "Вариант 31";
+	constexpr static const char window_title[] = "лаба по вычмату";
 
 	explicit Context (Resolution res): resolution{res} {
 		if (SDL_Init(SDL_INIT_VIDEO) < 0)

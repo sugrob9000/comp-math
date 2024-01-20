@@ -136,21 +136,21 @@ IMGUI_API void TextFmtV (fmt::string_view format, fmt::format_args);
 template <typename Fmt, typename... Args>
 void TextFmt (const Fmt& fmt, Args&&... args)
 {
-	TextFmtV(fmt, fmt::make_format_args(std::forward<Args&&>(args)...));
+	TextFmtV(fmt, fmt::make_format_args(args...));
 }
 
 template <typename Fmt, typename... Args>
 void TextFmtWrapped (const Fmt& fmt, Args&&... args)
 {
 	ImScoped::TextWrapPos wrap_pos;
-	TextFmtV(fmt, fmt::make_format_args(std::forward<Args&&>(args)...));
+	TextFmtV(fmt, fmt::make_format_args(args...));
 }
 
 template <typename Fmt, typename... Args>
 void TextFmtColored (const ImVec4& col, const Fmt& fmt, Args&&... args)
 {
 	ImScoped::StyleColor color(ImGuiCol_Text, col);
-	TextFmtV(fmt, fmt::make_format_args(std::forward<Args&&>(args)...));
+	TextFmtV(fmt, fmt::make_format_args(args...));
 }
 
 // ===================== Get ImGuiDataType enum from an actual type =====================
@@ -206,7 +206,6 @@ bool InputNumberN (const char* l, T* p, int n, T step = 0, T step_fast = 0, cons
 	return InputScalarN(l, DataTypeEnum<T>, p, n, (step == 0 ? nullptr : &step), (step_fast == 0 ? nullptr : &step_fast), fmt, flags);
 }
 
-
 // Drag two values such that `low <= high - min_diff`
 template <ScalarType T>
 bool DragMinMax (const char* id, T* low, T* high, float speed, T min_diff = 0, T min = std::numeric_limits<T>::lowest(), T max = std::numeric_limits<T>::max(), const char* fmt = nullptr, ImGuiSliderFlags = 0)
@@ -241,5 +240,4 @@ public:
 	constexpr operator const char* () const { return s; }
 };
 template <std::integral... Ts> GenerateId(Ts...) -> GenerateId<sizeof...(Ts)>;
-
 } // namespace ImGui
